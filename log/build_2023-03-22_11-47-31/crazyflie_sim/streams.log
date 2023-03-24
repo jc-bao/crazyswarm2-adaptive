@@ -1,0 +1,101 @@
+[0.522s] Invoking command in '/home/pcy/Documents/ros2_ws/build/crazyflie_sim': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake /home/pcy/Documents/ros2_ws/src/crazyswarm2/crazyflie_sim -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/pcy/Documents/ros2_ws/install/crazyflie_sim
+[0.552s] -- The C compiler identification is GNU 11.3.0
+[0.608s] -- The CXX compiler identification is GNU 11.3.0
+[0.614s] -- Detecting C compiler ABI info
+[0.657s] -- Detecting C compiler ABI info - done
+[0.667s] -- Check for working C compiler: /home/pcy/micromamba/envs/humble/bin/x86_64-conda-linux-gnu-cc - skipped
+[0.668s] -- Detecting C compile features
+[0.668s] -- Detecting C compile features - done
+[0.671s] -- Detecting CXX compiler ABI info
+[0.723s] -- Detecting CXX compiler ABI info - done
+[0.733s] -- Check for working CXX compiler: /home/pcy/micromamba/envs/humble/bin/x86_64-conda-linux-gnu-c++ - skipped
+[0.734s] -- Detecting CXX compile features
+[0.734s] -- Detecting CXX compile features - done
+[0.737s] -- Found ament_cmake: 1.3.3 (/home/pcy/micromamba/envs/humble/share/ament_cmake/cmake)
+[1.609s] -- Found Python3: /home/pcy/micromamba/envs/humble/bin/python3.10 (found version "3.10.9") found components: Interpreter 
+[1.661s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[1.826s] -- Configuring done (1.3s)
+[1.829s] -- Generating done (0.0s)
+[1.830s] -- Build files have been written to: /home/pcy/Documents/ros2_ws/build/crazyflie_sim
+[1.833s] Invoked command in '/home/pcy/Documents/ros2_ws/build/crazyflie_sim' returned '0': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake /home/pcy/Documents/ros2_ws/src/crazyswarm2/crazyflie_sim -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/pcy/Documents/ros2_ws/install/crazyflie_sim
+[1.834s] Invoking command in '/home/pcy/Documents/ros2_ws/build/crazyflie_sim': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --build /home/pcy/Documents/ros2_ws/build/crazyflie_sim -- -j16 -l16
+[1.862s] Built target ament_cmake_python_symlink_crazyflie_sim_setup
+[1.862s] Built target ament_cmake_python_symlink_crazyflie_sim
+[2.260s] running install_scripts
+[2.264s] running egg_info
+[2.265s] creating crazyflie_sim.egg-info
+[2.311s] writing crazyflie_sim.egg-info/PKG-INFO
+[2.316s] /home/pcy/micromamba/envs/humble/lib/python3.10/site-packages/setuptools/command/install.py:34: SetuptoolsDeprecationWarning: setup.py install is deprecated. Use build and pip and other standards-based tools.
+[2.317s]   warnings.warn(
+[2.336s] running egg_info
+[2.348s] writing dependency_links to crazyflie_sim.egg-info/dependency_links.txt
+[2.444s] writing crazyflie_sim.egg-info/PKG-INFO
+[2.464s] writing entry points to crazyflie_sim.egg-info/entry_points.txt
+[2.483s] writing dependency_links to crazyflie_sim.egg-info/dependency_links.txt
+[2.586s] writing top-level names to crazyflie_sim.egg-info/top_level.txt
+[2.586s] writing manifest file 'crazyflie_sim.egg-info/SOURCES.txt'
+[2.597s] writing entry points to crazyflie_sim.egg-info/entry_points.txt
+[2.677s] reading manifest file 'crazyflie_sim.egg-info/SOURCES.txt'
+[2.677s] writing manifest file 'crazyflie_sim.egg-info/SOURCES.txt'
+[2.709s] Built target ament_cmake_python_build_crazyflie_sim_egg
+[2.710s] writing top-level names to crazyflie_sim.egg-info/top_level.txt
+[2.779s] reading manifest file 'crazyflie_sim.egg-info/SOURCES.txt'
+[2.780s] writing manifest file 'crazyflie_sim.egg-info/SOURCES.txt'
+[2.835s] Installing crazyflie_server script to scripts
+[2.938s] Built target ament_cmake_python_build_crazyflie_sim_scripts
+[2.963s] Invoked command in '/home/pcy/Documents/ros2_ws/build/crazyflie_sim' returned '0': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --build /home/pcy/Documents/ros2_ws/build/crazyflie_sim -- -j16 -l16
+[3.038s] Invoking command in '/home/pcy/Documents/ros2_ws/build/crazyflie_sim': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --install /home/pcy/Documents/ros2_ws/build/crazyflie_sim
+[3.047s] -- Install configuration: ""
+[3.047s] -- Execute custom install script
+[3.047s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/environment/pythonpath.sh
+[3.058s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/environment/pythonpath.dsv
+[3.068s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim-2.0.0-py3.10.egg-info/PKG-INFO
+[3.088s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim-2.0.0-py3.10.egg-info/SOURCES.txt
+[3.102s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim-2.0.0-py3.10.egg-info/dependency_links.txt
+[3.111s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim-2.0.0-py3.10.egg-info/entry_points.txt
+[3.120s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim-2.0.0-py3.10.egg-info/top_level.txt
+[3.129s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/crazyflie_sim//crazyflie_server
+[3.146s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/__init__.py
+[3.155s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/backend/none.py
+[3.166s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/backend/np.py
+[3.176s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/crazyflie_server.py
+[3.186s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/crazyflie_sil.py
+[3.194s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/sim_data_types.py
+[3.209s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/README.md
+[3.210s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/blender.py
+[3.219s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/README.md
+[3.228s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/abandoned_greenhouse.jpg
+[3.261s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/aerodynamics_workshop.jpg
+[3.298s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/aviation_museum.jpg
+[3.329s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/crosswalk.jpg
+[3.357s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/derelict_overpass.jpg
+[3.393s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/env.jpg
+[3.411s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/lago_disola.jpg
+[3.442s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/lake_pier.jpg
+[3.453s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/machine_shop.jpg
+[3.472s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/museumplein.jpg
+[3.482s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/peppermint_powerplant.jpg
+[3.490s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/env/studio_garden.jpg
+[3.499s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/model/cf.mtl
+[3.537s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/data/model/cf.obj
+[3.559s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/pdf.py
+[3.582s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/record_states.py
+[3.600s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/lib/python3.10/site-packages/crazyflie_sim/visualization/rviz.py
+[3.634s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/ament_index/resource_index/package_run_dependencies/crazyflie_sim
+[3.648s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/ament_index/resource_index/parent_prefix_path/crazyflie_sim
+[3.663s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/environment/ament_prefix_path.sh
+[3.673s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/environment/ament_prefix_path.dsv
+[3.702s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/environment/path.sh
+[3.713s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/environment/path.dsv
+[3.729s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/local_setup.bash
+[3.738s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/local_setup.sh
+[3.748s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/local_setup.zsh
+[3.756s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/local_setup.dsv
+[3.766s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/package.dsv
+[3.775s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/ament_index/resource_index/packages/crazyflie_sim
+[3.783s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/cmake/crazyflie_simConfig.cmake
+[3.791s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/cmake/crazyflie_simConfig-version.cmake
+[3.807s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/crazyflie_sim/share/crazyflie_sim/package.xml
+[3.869s] Listing 'lib/python3.10/site-packages/crazyflie_sim'...
+[3.869s] Can't list 'lib/python3.10/site-packages/crazyflie_sim'
+[3.893s] Invoked command in '/home/pcy/Documents/ros2_ws/build/crazyflie_sim' returned '0': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/crazyflie_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --install /home/pcy/Documents/ros2_ws/build/crazyflie_sim

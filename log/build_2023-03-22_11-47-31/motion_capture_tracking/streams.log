@@ -1,0 +1,466 @@
+[0.063s] Invoking command in '/home/pcy/Documents/ros2_ws/build/motion_capture_tracking': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake /home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking
+[0.169s] -- The C compiler identification is GNU 11.3.0
+[0.361s] -- The CXX compiler identification is GNU 11.3.0
+[0.376s] -- Detecting C compiler ABI info
+[0.549s] -- Detecting C compiler ABI info - done
+[0.585s] -- Check for working C compiler: /home/pcy/micromamba/envs/humble/bin/x86_64-conda-linux-gnu-cc - skipped
+[0.585s] -- Detecting C compile features
+[0.586s] -- Detecting C compile features - done
+[0.591s] -- Detecting CXX compiler ABI info
+[0.741s] -- Detecting CXX compiler ABI info - done
+[0.761s] -- Check for working CXX compiler: /home/pcy/micromamba/envs/humble/bin/x86_64-conda-linux-gnu-c++ - skipped
+[0.761s] -- Detecting CXX compile features
+[0.762s] -- Detecting CXX compile features - done
+[0.767s] -- Found ament_cmake: 1.3.3 (/home/pcy/micromamba/envs/humble/share/ament_cmake/cmake)
+[1.662s] -- Found Python3: /home/pcy/micromamba/envs/humble/bin/python3.10 (found version "3.10.9") found components: Interpreter 
+[1.704s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[1.744s] -- Found rclcpp: 16.0.3 (/home/pcy/micromamba/envs/humble/share/rclcpp/cmake)
+[1.801s] -- Found rosidl_generator_c: 3.1.4 (/home/pcy/micromamba/envs/humble/share/rosidl_generator_c/cmake)
+[1.807s] -- Found rosidl_adapter: 3.1.4 (/home/pcy/micromamba/envs/humble/share/rosidl_adapter/cmake)
+[1.816s] -- Found rosidl_generator_cpp: 3.1.4 (/home/pcy/micromamba/envs/humble/share/rosidl_generator_cpp/cmake)
+[1.832s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[1.851s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.931s] -- Checking for module 'yaml-0.1'
+[1.979s] --   Found yaml-0.1, version 0.2.5
+[2.117s] -- Found rmw_implementation_cmake: 6.1.1 (/home/pcy/micromamba/envs/humble/share/rmw_implementation_cmake/cmake)
+[2.121s] -- Found rmw_fastrtps_cpp: 6.2.2 (/home/pcy/micromamba/envs/humble/share/rmw_fastrtps_cpp/cmake)
+[2.354s] -- Found OpenSSL: /home/pcy/micromamba/envs/humble/lib/libcrypto.so (found version "3.1.0")  
+[2.377s] -- Found FastRTPS: /home/pcy/micromamba/envs/humble/include  
+[2.417s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[2.428s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[2.480s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+[2.480s] -- Looking for pthread_create in pthreads
+[2.522s] -- Looking for pthread_create in pthreads - not found
+[2.522s] -- Looking for pthread_create in pthread
+[2.564s] -- Looking for pthread_create in pthread - found
+[2.565s] -- Found Threads: TRUE  
+[2.671s] -- Found tf2_ros: 0.25.2 (/home/pcy/micromamba/envs/humble/share/tf2_ros/cmake)
+[3.149s] -- Found sensor_msgs: 4.2.3 (/home/pcy/micromamba/envs/humble/share/sensor_msgs/cmake)
+[3.220s] -- Found motion_capture_tracking_interfaces: 1.0.0 (/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/share/motion_capture_tracking_interfaces/cmake)
+[3.315s] -- Checking for module 'eigen3'
+[3.363s] --   Found eigen3, version 3.4.0
+[3.495s] -- Found Eigen: /home/pcy/micromamba/envs/humble/include/eigen3 (Required is at least version "3.1") 
+[3.495s] -- Eigen found (include: /home/pcy/micromamba/envs/humble/include/eigen3, version: 3.4.0)
+[3.519s] -- Found Boost: /home/pcy/micromamba/envs/humble/lib/cmake/Boost-1.78.0/BoostConfig.cmake (found suitable version "1.78.0", minimum required is "1.65.0") found components: system filesystem date_time iostreams 
+[3.519s] -- looking for PCL_COMMON
+[3.520s] -- Found PCL_COMMON: /home/pcy/micromamba/envs/humble/lib/libpcl_common.so  
+[3.521s] -- Found PCL: pcl_common;Boost::system;Boost::filesystem;Boost::date_time;Boost::iostreams  
+[3.522s] [33mCMake Warning (dev) at deps/librigidbodytracker/CMakeLists.txt:7 (find_package):
+[3.522s]   Policy CMP0074 is not set: find_package uses <PackageName>_ROOT variables.
+[3.522s]   Run "cmake --help-policy CMP0074" for policy details.  Use the cmake_policy
+[3.522s]   command to set the policy and suppress this warning.
+[3.523s] 
+[3.523s]   CMake variable PCL_ROOT is set to:
+[3.523s] 
+[3.523s]     /home/pcy/micromamba/envs/humble
+[3.523s] 
+[3.523s]   For compatibility, CMake is ignoring the variable.
+[3.523s] This warning is for project developers.  Use -Wno-dev to suppress it.
+[3.523s] [0m
+[3.551s] -- Checking for module 'flann'
+[3.603s] --   Found flann, version 1.9.1
+[3.733s] -- Found FLANN: /home/pcy/micromamba/envs/humble/lib/libflann_cpp.so  
+[3.733s] -- FLANN found (include: /home/pcy/micromamba/envs/humble/include, lib: /home/pcy/micromamba/envs/humble/lib/libflann_cpp.so)
+[3.768s] -- Found GLEW: /home/pcy/micromamba/envs/humble/lib/libGLEW.so  
+[3.777s] -- Could NOT find OpenGL (missing: OPENGL_opengl_LIBRARY OPENGL_glx_LIBRARY OpenGL) 
+[3.778s] -- Found utf8cpp: /home/pcy/micromamba/envs/humble/include  
+[3.787s] -- Found ZLIB: /home/pcy/micromamba/envs/humble/lib/libz.so (found version "1.2.13")  
+[3.802s] -- Found PNG: /home/pcy/micromamba/envs/humble/lib/libpng.so (found version "1.6.39") 
+[3.803s] -- Found nlohmann_json: /home/pcy/micromamba/envs/humble/share/cmake/nlohmann_json/nlohmann_jsonConfig.cmake (found version "3.11.2") 
+[3.826s] -- Found Eigen3: /home/pcy/micromamba/envs/humble/include/eigen3 (found version "3.4.0") 
+[3.847s] -- Found X11: /home/pcy/micromamba/envs/humble/include   
+[3.847s] -- Looking for XOpenDisplay in /home/pcy/micromamba/envs/humble/lib/libX11.so;/home/pcy/micromamba/envs/humble/lib/libXext.so
+[3.895s] -- Looking for XOpenDisplay in /home/pcy/micromamba/envs/humble/lib/libX11.so;/home/pcy/micromamba/envs/humble/lib/libXext.so - found
+[3.895s] -- Looking for gethostbyname
+[3.935s] -- Looking for gethostbyname - found
+[3.935s] -- Looking for connect
+[3.977s] -- Looking for connect - found
+[3.977s] -- Looking for remove
+[4.017s] -- Looking for remove - found
+[4.017s] -- Looking for shmat
+[4.059s] -- Looking for shmat - found
+[4.059s] -- Looking for IceConnectionNumber in ICE
+[4.101s] -- Looking for IceConnectionNumber in ICE - found
+[4.306s] -- Found EXPAT: /home/pcy/micromamba/envs/humble/lib/libexpat.so (found version "2.5.0") 
+[4.308s] -- Found double-conversion: /home/pcy/micromamba/envs/humble/lib/libdouble-conversion.so  
+[4.310s] -- Found LZ4: /home/pcy/micromamba/envs/humble/lib/liblz4.so (found version "1.9.4") 
+[4.312s] -- Found LZMA: /home/pcy/micromamba/envs/humble/lib/liblzma.so (found version "5.2.6") 
+[4.343s] -- Found JPEG: /home/pcy/micromamba/envs/humble/lib/libjpeg.so (found version "90") 
+[4.348s] -- Found TIFF: /home/pcy/micromamba/envs/humble/lib/libtiff.so (found version "4.4.0")  
+[4.356s] -- Found Freetype: /home/pcy/micromamba/envs/humble/lib/libfreetype.so (found version "2.12.1") 
+[4.409s] -- Could NOT find OpenGL (missing: OPENGL_opengl_LIBRARY OPENGL_glx_LIBRARY OpenGL) 
+[4.500s] -- Eigen found (include: /home/pcy/micromamba/envs/humble/include/eigen3, version: 3.4.0)
+[4.535s] -- Could NOT find OpenGL (missing: OPENGL_opengl_LIBRARY OPENGL_glx_LIBRARY OpenGL) 
+[4.607s] -- Found Qhull version 8.0.2
+[4.638s] -- Could NOT find OpenGL (missing: OPENGL_opengl_LIBRARY OPENGL_glx_LIBRARY OpenGL) 
+[4.708s] -- looking for PCL_KDTREE
+[4.709s] -- Found PCL_KDTREE: /home/pcy/micromamba/envs/humble/lib/libpcl_kdtree.so  
+[4.709s] -- looking for PCL_OCTREE
+[4.709s] -- Found PCL_OCTREE: /home/pcy/micromamba/envs/humble/lib/libpcl_octree.so  
+[4.710s] -- looking for PCL_SEARCH
+[4.710s] -- Found PCL_SEARCH: /home/pcy/micromamba/envs/humble/lib/libpcl_search.so  
+[4.710s] -- looking for PCL_SAMPLE_CONSENSUS
+[4.711s] -- Found PCL_SAMPLE_CONSENSUS: /home/pcy/micromamba/envs/humble/lib/libpcl_sample_consensus.so  
+[4.711s] -- looking for PCL_FILTERS
+[4.712s] -- Found PCL_FILTERS: /home/pcy/micromamba/envs/humble/lib/libpcl_filters.so  
+[4.712s] -- looking for PCL_2D
+[4.712s] -- Found PCL_2D: /home/pcy/micromamba/envs/humble/include/pcl-1.12  
+[4.712s] -- looking for PCL_GEOMETRY
+[4.712s] -- Found PCL_GEOMETRY: /home/pcy/micromamba/envs/humble/include/pcl-1.12  
+[4.712s] -- looking for PCL_IO
+[4.713s] -- Found PCL_IO: /home/pcy/micromamba/envs/humble/lib/libpcl_io.so  
+[4.713s] -- looking for PCL_FEATURES
+[4.714s] -- Found PCL_FEATURES: /home/pcy/micromamba/envs/humble/lib/libpcl_features.so  
+[4.714s] -- looking for PCL_ML
+[4.714s] -- Found PCL_ML: /home/pcy/micromamba/envs/humble/lib/libpcl_ml.so  
+[4.715s] -- looking for PCL_SEGMENTATION
+[4.715s] -- Found PCL_SEGMENTATION: /home/pcy/micromamba/envs/humble/lib/libpcl_segmentation.so  
+[4.715s] -- looking for PCL_VISUALIZATION
+[4.716s] -- Found PCL_VISUALIZATION: /home/pcy/micromamba/envs/humble/lib/libpcl_visualization.so  
+[4.716s] -- looking for PCL_SURFACE
+[4.717s] -- Found PCL_SURFACE: /home/pcy/micromamba/envs/humble/lib/libpcl_surface.so  
+[4.717s] -- looking for PCL_REGISTRATION
+[4.718s] -- Found PCL_REGISTRATION: /home/pcy/micromamba/envs/humble/lib/libpcl_registration.so  
+[4.718s] -- looking for PCL_KEYPOINTS
+[4.718s] -- Found PCL_KEYPOINTS: /home/pcy/micromamba/envs/humble/lib/libpcl_keypoints.so  
+[4.718s] -- looking for PCL_TRACKING
+[4.719s] -- Found PCL_TRACKING: /home/pcy/micromamba/envs/humble/lib/libpcl_tracking.so  
+[4.719s] -- looking for PCL_RECOGNITION
+[4.720s] -- Found PCL_RECOGNITION: /home/pcy/micromamba/envs/humble/lib/libpcl_recognition.so  
+[4.720s] -- looking for PCL_STEREO
+[4.721s] -- Found PCL_STEREO: /home/pcy/micromamba/envs/humble/lib/libpcl_stereo.so  
+[4.721s] -- looking for PCL_OUTOFCORE
+[4.722s] -- Found PCL_OUTOFCORE: /home/pcy/micromamba/envs/humble/lib/libpcl_outofcore.so  
+[4.722s] -- looking for PCL_PEOPLE
+[4.722s] -- Found PCL_PEOPLE: /home/pcy/micromamba/envs/humble/lib/libpcl_people.so  
+[4.723s] -- Found PCL: pcl_common;pcl_kdtree;pcl_octree;pcl_search;pcl_sample_consensus;pcl_filters;pcl_io;pcl_features;pcl_ml;pcl_segmentation;pcl_visualization;pcl_surface;pcl_registration;pcl_keypoints;pcl_tracking;pcl_recognition;pcl_stereo;pcl_outofcore;pcl_people;Boost::system;Boost::filesystem;Boost::date_time;Boost::iostreams;VTK::ChartsCore;VTK::CommonColor;VTK::CommonComputationalGeometry;VTK::CommonCore;VTK::CommonDataModel;VTK::CommonExecutionModel;VTK::CommonMath;VTK::CommonMisc;VTK::CommonTransforms;VTK::FiltersCore;VTK::FiltersExtraction;VTK::FiltersGeneral;VTK::FiltersGeometry;VTK::FiltersModeling;VTK::FiltersSources;VTK::ImagingCore;VTK::ImagingSources;VTK::InteractionImage;VTK::InteractionStyle;VTK::InteractionWidgets;VTK::IOCore;VTK::IOGeometry;VTK::IOImage;VTK::IOLegacy;VTK::IOPLY;VTK::RenderingAnnotation;VTK::RenderingCore;VTK::RenderingContext2D;VTK::RenderingLOD;VTK::RenderingFreeType;VTK::ViewsCore;VTK::ViewsContext2D;VTK::RenderingOpenGL2;VTK::GUISupportQt;FLANN::FLANN;QHULL::QHULL  
+[4.725s] [33mCMake Warning (dev) at deps/libmotioncapture/CMakeLists.txt:5 (option):
+[4.725s]   Policy CMP0077 is not set: option() honors normal variables.  Run "cmake
+[4.725s]   --help-policy CMP0077" for policy details.  Use the cmake_policy command to
+[4.725s]   set the policy and suppress this warning.
+[4.725s] 
+[4.725s]   For compatibility with older versions of CMake, option is clearing the
+[4.725s]   normal variable 'LIBMOTIONCAPTURE_BUILD_PYTHON_BINDINGS'.
+[4.725s] This warning is for project developers.  Use -Wno-dev to suppress it.
+[4.725s] [0m
+[4.728s] -- Found Boost: /home/pcy/micromamba/envs/humble/lib/cmake/Boost-1.78.0/BoostConfig.cmake (found suitable version "1.78.0", minimum required is "1.5") found components: system 
+[4.736s] -- Found Boost: /home/pcy/micromamba/envs/humble/lib/cmake/Boost-1.78.0/BoostConfig.cmake (found suitable version "1.78.0", minimum required is "1.5") found components: system thread 
+[4.737s] -- Check if compiler accepts -pthread
+[4.782s] -- Check if compiler accepts -pthread - yes
+[4.788s] [0mCMake Deprecation Warning at deps/libmotioncapture/deps/vrpn/CMakeLists.txt:1 (cmake_minimum_required):
+[4.788s]   Compatibility with CMake < 2.8.12 will be removed from a future version of
+[4.788s]   CMake.
+[4.788s] 
+[4.788s]   Update the VERSION argument <min> value or use a ...<max> suffix to tell
+[4.788s]   CMake that the project does not need compatibility with older versions.
+[4.788s] 
+[4.788s] [0m
+[4.838s] [0mCMake Deprecation Warning at deps/libmotioncapture/deps/vrpn/quat/CMakeLists.txt:1 (cmake_minimum_required):
+[4.838s]   Compatibility with CMake < 2.8.12 will be removed from a future version of
+[4.838s]   CMake.
+[4.838s] 
+[4.838s]   Update the VERSION argument <min> value or use a ...<max> suffix to tell
+[4.838s]   CMake that the project does not need compatibility with older versions.
+[4.838s] 
+[4.838s] [0m
+[4.853s] -- Checking for module 'libusb-1.0'
+[4.904s] --   Found libusb-1.0, version 1.0.26
+[5.026s] -- Found Libusb1: /home/pcy/micromamba/envs/humble/lib/libusb-1.0.so  
+[6.616s] -- NOTE: You have VRPN_USE_LOCAL_HIDAPI enabled, but VRPN_USE_HID disabled: HIDAPI will only be built if you enable HID support for VRPN
+[6.617s] [0mCMake Deprecation Warning at deps/libmotioncapture/deps/vrpn/cmake/FindOpenHaptics.cmake:56 (cmake_minimum_required):
+[6.617s]   Compatibility with CMake < 2.8.12 will be removed from a future version of
+[6.617s]   CMake.
+[6.617s] 
+[6.617s]   Update the VERSION argument <min> value or use a ...<max> suffix to tell
+[6.617s]   CMake that the project does not need compatibility with older versions.
+[6.617s] Call Stack (most recent call first):
+[6.617s]   deps/libmotioncapture/deps/vrpn/CMakeLists.txt:468 (find_package)
+[6.617s] 
+[6.617s] [0m
+[6.642s] [33mCMake Warning (dev) at /home/pcy/micromamba/envs/humble/share/cmake-3.26/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+[6.642s]   The package name passed to `find_package_handle_standard_args` (I2CDEV)
+[6.642s]   does not match the name of the calling package (libi2c-dev).  This can lead
+[6.642s]   to problems in calling code that expects `find_package` result variables
+[6.642s]   (e.g., `_FOUND`) to follow a certain pattern.
+[6.642s] Call Stack (most recent call first):
+[6.642s]   deps/libmotioncapture/deps/vrpn/cmake/Findlibi2c-dev.cmake:43 (find_package_handle_standard_args)
+[6.642s]   deps/libmotioncapture/deps/vrpn/CMakeLists.txt:518 (find_package)
+[6.642s] This warning is for project developers.  Use -Wno-dev to suppress it.
+[6.642s] [0m
+[6.642s] -- Found I2CDEV: /home/pcy/micromamba/envs/humble/x86_64-conda-linux-gnu/sysroot/usr/include  
+[6.658s] -- Looking for C++ include linux/joystick.h
+[6.718s] -- Looking for C++ include linux/joystick.h - found
+[6.718s] -- Looking for C++ include linux/input.h
+[6.776s] -- Looking for C++ include linux/input.h - found
+[6.803s] -- Found quatlib: quat  
+[6.809s] [0mCMake Deprecation Warning at deps/libmotioncapture/deps/vrpn/client_src/CMakeLists.txt:1 (cmake_minimum_required):
+[6.809s]   Compatibility with CMake < 2.8.12 will be removed from a future version of
+[6.809s]   CMake.
+[6.809s] 
+[6.809s]   Update the VERSION argument <min> value or use a ...<max> suffix to tell
+[6.809s]   CMake that the project does not need compatibility with older versions.
+[6.809s] 
+[6.809s] [0m
+[7.516s] -- Found Python3: /home/pcy/micromamba/envs/humble/bin/python3.10 (found version "3.10.9") found components: Interpreter Development Development.Module Development.Embed 
+[7.521s] -- pybind11 v2.11.0 dev1
+[7.551s] -- Performing Test HAS_FLTO
+[7.681s] -- Performing Test HAS_FLTO - Success
+[7.751s] -- Configuring done (7.7s)
+[7.838s] -- Generating done (0.1s)
+[7.843s] -- Build files have been written to: /home/pcy/Documents/ros2_ws/build/motion_capture_tracking
+[7.867s] Invoked command in '/home/pcy/Documents/ros2_ws/build/motion_capture_tracking' returned '0': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake /home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking
+[7.869s] Invoking command in '/home/pcy/Documents/ros2_ws/build/motion_capture_tracking': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --build /home/pcy/Documents/ros2_ws/build/motion_capture_tracking -- -j16 -l16
+[7.901s] [ 17%] [32mBuilding CXX object deps/librigidbodytracker/CMakeFiles/librigidbodytracker.dir/src/rigid_body_tracker.cpp.o[0m
+[7.901s] [ 17%] [32mBuilding CXX object deps/libmotioncapture/deps/qualisys_cpp_sdk/CMakeFiles/qualisys_cpp_sdk.dir/Network.cpp.o[0m
+[7.901s] [ 17%] [32mBuilding C object deps/libmotioncapture/deps/vrpn/quat/CMakeFiles/quat.dir/matrix.c.o[0m
+[7.901s] [ 17%] [32mBuilding C object deps/libmotioncapture/deps/vrpn/quat/CMakeFiles/quat.dir/vector.c.o[0m
+[7.901s] [ 19%] [32mBuilding CXX object deps/libmotioncapture/deps/qualisys_cpp_sdk/CMakeFiles/qualisys_cpp_sdk.dir/RTPacket.cpp.o[0m
+[7.901s] [ 17%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconDataStreamSDKCore/CoreClient.cpp.o[0m
+[7.902s] [ 17%] [32mBuilding CXX object deps/libmotioncapture/deps/qualisys_cpp_sdk/CMakeFiles/qualisys_cpp_sdk.dir/Markup.cpp.o[0m
+[7.902s] [ 17%] [32mBuilding C object deps/libmotioncapture/deps/vrpn/quat/CMakeFiles/quat.dir/xyzquat.c.o[0m
+[7.902s] [ 19%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconDataStreamSDKCore/CoreClientTimingLog.cpp.o[0m
+[7.902s] [ 19%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconDataStreamSDKCoreUtils/ClientUtils.cpp.o[0m
+[7.902s] [ 17%] [32mBuilding CXX object deps/libmotioncapture/deps/qualisys_cpp_sdk/CMakeFiles/qualisys_cpp_sdk.dir/RTProtocol.cpp.o[0m
+[7.902s] [ 17%] [32mBuilding C object deps/libmotioncapture/deps/vrpn/quat/CMakeFiles/quat.dir/quat.c.o[0m
+[7.906s] [ 22%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconDataStreamSDKCoreUtils/AxisMapping.cpp.o[0m
+[7.907s] [ 22%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconDataStreamSDKCore/WirelessConfiguration.cpp.o[0m
+[7.909s] [ 24%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconCGStreamClientSDK/CGClient.cpp.o[0m
+[7.916s] [ 25%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconCGStreamClient/ViconCGStreamClient.cpp.o[0m
+[7.958s] [ 27%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconCGStreamClient/CGStreamReaderWriter.cpp.o[0m
+[7.984s] [ 29%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconCGStreamClient/ViconCGStreamBayer.cpp.o[0m
+[8.025s] [ 30%] [32mBuilding CXX object deps/libmotioncapture/deps/vicon-datastream-sdk/CMakeFiles/ViconDataStreamSDK_CPP.dir/Vicon/CrossMarket/DataStream/ViconDataStreamSDK_CPP/DataStreamClient.cpp.o[0m
+[8.073s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTPacket.cpp:[m[K In member function '[01m[Kfloat CRTPacket::SetByteOrder(float*)[m[K':
+[8.073s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTPacket.cpp:1837:18:[m[K [01;35m[Kwarning: [m[Kdereferencing type-punned pointer will break strict-aliasing rules [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wstrict-aliasing-Wstrict-aliasing]8;;[m[K]
+[8.074s]  1837 |         return *[01;35m[K((float*)&nTmp)[m[K;
+[8.074s]       |                 [01;35m[K~^~~~~~~~~~~~~~[m[K
+[8.074s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTPacket.cpp:[m[K In member function '[01m[Kdouble CRTPacket::SetByteOrder(double*)[m[K':
+[8.074s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTPacket.cpp:1849:18:[m[K [01;35m[Kwarning: [m[Kdereferencing type-punned pointer will break strict-aliasing rules [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wstrict-aliasing-Wstrict-aliasing]8;;[m[K]
+[8.074s]  1849 |         return *[01;35m[K((double*)&nTmp)[m[K;
+[8.074s]       |                 [01;35m[K~^~~~~~~~~~~~~~~[m[K
+[8.142s] In file included from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/Markup.cpp:18[m[K:
+[8.143s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/Markup.h:[m[K In copy constructor '[01m[KCMarkup::ElemPos::ElemPos(const CMarkup::ElemPos&)[m[K':
+[8.143s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/Markup.h:89:55:[m[K [01;35m[Kwarning: [m[Kimplicitly-declared '[01m[Kconstexpr CMarkup::ElemPos& CMarkup::ElemPos::operator=(const CMarkup::ElemPos&)[m[K' is deprecated [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wdeprecated-copy-Wdeprecated-copy]8;;[m[K]
+[8.143s]    89 |                 ElemPos(const ElemPos& pos) { *this = [01;35m[Kpos[m[K; };
+[8.143s]       |                                                       [01;35m[K^~~[m[K
+[8.143s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/Markup.h:89:17:[m[K [01;36m[Knote: [m[Kbecause '[01m[KCMarkup::ElemPos[m[K' has user-provided '[01m[KCMarkup::ElemPos::ElemPos(const CMarkup::ElemPos&)[m[K'
+[8.143s]    89 |                 [01;36m[KElemPos[m[K(const ElemPos& pos) { *this = pos; };
+[8.143s]       |                 [01;36m[K^~~~~~~[m[K
+[8.186s] [ 32%] [32m[1mLinking C static library libquat.a[0m
+[8.275s] [ 32%] Built target quat
+[8.325s] [ 33%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Analog.C.o[0m
+[8.334s] [ 35%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Analog_Output.C.o[0m
+[8.350s] [ 37%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Assert.C.o[0m
+[8.407s] [ 38%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Auxiliary_Logger.C.o[0m
+[8.491s] [ 40%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_BaseClass.C.o[0m
+[8.598s] [ 41%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Button.C.o[0m
+[8.614s] In file included from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:17[m[K:
+[8.614s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/Markup.h:[m[K In copy constructor '[01m[KCMarkup::ElemPos::ElemPos(const CMarkup::ElemPos&)[m[K':
+[8.614s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/Markup.h:89:55:[m[K [01;35m[Kwarning: [m[Kimplicitly-declared '[01m[Kconstexpr CMarkup::ElemPos& CMarkup::ElemPos::operator=(const CMarkup::ElemPos&)[m[K' is deprecated [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wdeprecated-copy-Wdeprecated-copy]8;;[m[K]
+[8.614s]    89 |                 ElemPos(const ElemPos& pos) { *this = [01;35m[Kpos[m[K; };
+[8.614s]       |                                                       [01;35m[K^~~[m[K
+[8.615s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/Markup.h:89:17:[m[K [01;36m[Knote: [m[Kbecause '[01m[KCMarkup::ElemPos[m[K' has user-provided '[01m[KCMarkup::ElemPos::ElemPos(const CMarkup::ElemPos&)[m[K'
+[8.615s]    89 |                 [01;36m[KElemPos[m[K(const ElemPos& pos) { *this = pos; };
+[8.615s]       |                 [01;36m[K^~~~~~~[m[K
+[8.795s] [ 43%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Connection.C.o[0m
+[8.828s] [ 45%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Dial.C.o[0m
+[8.861s] [ 46%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_EndpointContainer.C.o[0m
+[8.939s] [ 48%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_FileConnection.C.o[0m
+[8.984s] [ 50%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_FileController.C.o[0m
+[9.008s] [ 51%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_ForceDevice.C.o[0m
+[9.113s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/vrpn/vrpn_EndpointContainer.C:[m[K In member function '[01m[Kvoid vrpn::EndpointContainer::compact_()[m[K':
+[9.114s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/vrpn/vrpn_EndpointContainer.C:91:19:[m[K [01;35m[Kwarning: [m[Kunused variable '[01m[Kbefore[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.114s]    91 |         size_type [01;35m[Kbefore[m[K = get_full_container_size();
+[9.114s]       |                   [01;35m[K^~~~~~[m[K
+[9.141s] [ 53%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Forwarder.C.o[0m
+[9.243s] [ 54%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_ForwarderController.C.o[0m
+[9.257s] [ 56%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_FunctionGenerator.C.o[0m
+[9.265s] [ 58%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Imager.C.o[0m
+[9.408s] [ 59%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_LamportClock.C.o[0m
+[9.408s] [ 61%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Mutex.C.o[0m
+[9.489s] [ 62%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Poser.C.o[0m
+[9.556s] [ 64%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_RedundantTransmission.C.o[0m
+[10.011s] [ 66%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Serial.C.o[0m
+[10.099s] [ 67%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_SerialPort.C.o[0m
+[10.276s] [ 69%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Shared.C.o[0m
+[10.304s] [ 70%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_SharedObject.C.o[0m
+[10.345s] [ 72%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Sound.C.o[0m
+[10.436s] [ 74%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Text.C.o[0m
+[10.610s] In file included from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/vrpn/vrpn_Connection.h:7[m[K,
+[10.610s]                  from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/vrpn/vrpn_Connection.C:26[m[K:
+[10.610s] In function '[01m[Kvoid vrpn_strcpy(char (&)[charCount], const char*) [with long unsigned int charCount = 150][m[K',
+[10.610s]     inlined from '[01m[Kstatic int vrpn_Connection_IP::handle_UDP_message(void*, vrpn_HANDLERPARAM)[m[K' at [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/vrpn/vrpn_Connection.C:5696:16[m[K:
+[10.610s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/vrpn/vrpn_Shared.h:516:10:[m[K [01;35m[Kwarning: [m[K'[01m[Kchar* strncpy(char*, const char*, size_t)[m[K' output may be truncated copying 149 bytes from a string of length 999 [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wstringop-truncation-Wstringop-truncation]8;;[m[K]
+[10.611s]   516 |   [01;35m[Kstrncpy(to, pSrc, charCount - 1)[m[K;
+[10.611s]       |   [01;35m[K~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[10.625s] [ 75%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Thread.C.o[0m
+[10.793s] [ 77%] [32mBuilding CXX object deps/libmotioncapture/deps/vrpn/CMakeFiles/vrpn.dir/vrpn_Tracker.C.o[0m
+[11.785s] [ 79%] [32m[1mLinking CXX static library libvrpn.a[0m
+[11.843s] [ 79%] Built target vrpn
+[12.567s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:[m[K In member function '[01m[Kbool CRTProtocol::GetCapture(const char*, bool)[m[K':
+[12.568s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:651:66:[m[K [01;35m[Kwarning: [m[K'[01m[K%s[m[K' directive writing up to 1023 bytes into a region of size 1004 [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wformat-overflow=-Wformat-overflow=]8;;[m[K]
+[12.568s]   651 |                         sprintf(maErrorStr, "No packet received. [01;35m[K%s[m[K.", maErrorStr);
+[12.568s]       |                                                                  [01;35m[K^~[m[K
+[12.568s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:651:32:[m[K [01;36m[Knote: [m[K'[01m[Ksprintf[m[K' output between 22 and 1045 bytes into a destination of size 1024
+[12.568s]   651 |                         [01;36m[Ksprintf(maErrorStr, "No packet received. %s.", maErrorStr)[m[K;
+[12.568s]       |                         [01;36m[K~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[12.568s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:651:32:[m[K [01;35m[Kwarning: [m[K'[01m[Ksprintf[m[K' argument 3 overlaps destination object '[01m[Kthis[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wrestrict-Wrestrict]8;;[m[K]
+[12.568s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:580:62:[m[K [01;36m[Knote: [m[Kdestination object referenced by '[01m[Krestrict[m[K'-qualified argument 1 was declared here
+[12.569s]   580 | bool CRTProtocol::GetCapture(const char* pFileName, bool bC3D[01;36m[K)[m[K
+[12.569s]       |                                                              [01;36m[K^[m[K
+[12.588s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:[m[K In member function '[01m[Kbool CRTProtocol::SetQTMEvent(const char*)[m[K':
+[12.588s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:704:28:[m[K [01;35m[Kwarning: [m[K'[01m[K%s[m[K' directive writing up to 92 bytes into a region of size between 88 and 94 [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wformat-overflow=-Wformat-overflow=]8;;[m[K]
+[12.588s]   704 |         sprintf(tTemp, "%s [01;35m[K%s[m[K", (mnMajorVersion > 1 || mnMinorVersion > 7) ? "SetQTMEvent" : "Event", pLabel);
+[12.588s]       |                            [01;35m[K^~[m[K
+[12.588s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:704:16:[m[K [01;36m[Knote: [m[K'[01m[Ksprintf[m[K' output between 7 and 105 bytes into a destination of size 100
+[12.588s]   704 |         [01;36m[Ksprintf(tTemp, "%s %s", (mnMajorVersion > 1 || mnMinorVersion > 7) ? "SetQTMEvent" : "Event", pLabel)[m[K;
+[12.588s]       |         [01;36m[K~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[12.655s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:[m[K In member function '[01m[Kbool CRTProtocol::SaveCapture(const char*, bool, char*, int)[m[K':
+[12.655s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:995:32:[m[K [01;35m[Kwarning: [m[K'[01m[K%s[m[K' directive writing up to 10 bytes into a region of size between 1 and 95 [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wformat-overflow=-Wformat-overflow=]8;;[m[K]
+[12.655s]   995 |         sprintf(tTemp, "Save %s[01;35m[K%s[m[K", pFileName, bOverwrite ? " Overwrite" : "");
+[12.655s]       |                                [01;35m[K^~[m[K
+[12.655s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:995:16:[m[K [01;36m[Knote: [m[K'[01m[Ksprintf[m[K' output between 6 and 110 bytes into a destination of size 100
+[12.655s]   995 |         [01;36m[Ksprintf(tTemp, "Save %s%s", pFileName, bOverwrite ? " Overwrite" : "")[m[K;
+[12.655s]       |         [01;36m[K~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[12.665s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:[m[K In member function '[01m[Kbool CRTProtocol::LoadProject(const char*)[m[K':
+[12.665s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:1040:37:[m[K [01;35m[Kwarning: [m[K'[01m[K%s[m[K' directive writing up to 94 bytes into a region of size 88 [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wformat-overflow=-Wformat-overflow=]8;;[m[K]
+[12.665s]  1040 |         sprintf(tTemp, "LoadProject [01;35m[K%s[m[K", pFileName);
+[12.665s]       |                                     [01;35m[K^~[m[K
+[12.666s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/deps/qualisys_cpp_sdk/RTProtocol.cpp:1040:16:[m[K [01;36m[Knote: [m[K'[01m[Ksprintf[m[K' output between 13 and 107 bytes into a destination of size 100
+[12.666s]  1040 |         [01;36m[Ksprintf(tTemp, "LoadProject %s", pFileName)[m[K;
+[12.666s]       |         [01;36m[K~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[14.643s] In file included from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:1[m[K:
+[14.643s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/include/librigidbodytracker/rigid_body_tracker.h:[m[K In constructor '[01m[Klibrigidbodytracker::RigidBodyTracker::RigidBodyTracker(const std::vector<librigidbodytracker::DynamicsConfiguration>&, const std::vector<std::shared_ptr<pcl::PointCloud<pcl::PointXYZ> > >&, const std::vector<librigidbodytracker::RigidBody>&)[m[K':
+[14.643s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/include/librigidbodytracker/rigid_body_tracker.h:112:10:[m[K [01;35m[Kwarning: [m[K'[01m[Klibrigidbodytracker::RigidBodyTracker::m_trackPositionOnly[m[K' will be initialized after [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wreorder-Wreorder]8;;[m[K]
+[14.643s]   112 |     bool [01;35m[Km_trackPositionOnly[m[K;
+[14.643s]       |          [01;35m[K^~~~~~~~~~~~~~~~~~~[m[K
+[14.643s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/include/librigidbodytracker/rigid_body_tracker.h:110:10:[m[K [01;35m[Kwarning: [m[K  '[01m[Kbool librigidbodytracker::RigidBodyTracker::m_initialized[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wreorder-Wreorder]8;;[m[K]
+[14.643s]   110 |     bool [01;35m[Km_initialized[m[K;
+[14.643s]       |          [01;35m[K^~~~~~~~~~~~~[m[K
+[14.643s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:75:1:[m[K [01;35m[Kwarning: [m[K  when initialized here [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wreorder-Wreorder]8;;[m[K]
+[14.643s]    75 | [01;35m[KRigidBodyTracker[m[K::RigidBodyTracker(
+[14.644s]       | [01;35m[K^~~~~~~~~~~~~~~~[m[K
+[14.678s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:[m[K In member function '[01m[Kbool librigidbodytracker::RigidBodyTracker::initializePose(pcl::PointCloud<pcl::PointXYZ>::ConstPtr)[m[K':
+[14.678s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:152:21:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: '[01m[Kint[m[K' and '[01m[Kconst size_t[m[K' {aka '[01m[Kconst long unsigned int[m[K'} [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wsign-compare-Wsign-compare]8;;[m[K]
+[14.678s]   152 |   for (int i = 0; [01;35m[Ki < numRigidBodies[m[K; ++i) {
+[14.678s]       |                   [01;35m[K~~^~~~~~~~~~~~~~~~[m[K
+[14.678s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:154:27:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: '[01m[Kint[m[K' and '[01m[Kconst size_t[m[K' {aka '[01m[Kconst long unsigned int[m[K'} [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wsign-compare-Wsign-compare]8;;[m[K]
+[14.679s]   154 |     for (int j = i + 1; [01;35m[Kj < numRigidBodies[m[K; ++j) {
+[14.679s]       |                         [01;35m[K~~^~~~~~~~~~~~~~~~[m[K
+[14.687s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:165:25:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: '[01m[Kint[m[K' and '[01m[Kconst size_t[m[K' {aka '[01m[Kconst long unsigned int[m[K'} [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wsign-compare-Wsign-compare]8;;[m[K]
+[14.688s]   165 |   for (int iRb = 0; [01;35m[KiRb < numRigidBodies[m[K; ++iRb) {
+[14.688s]       |                     [01;35m[K~~~~^~~~~~~~~~~~~~~~[m[K
+[14.688s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:180:16:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: '[01m[Kint[m[K' and '[01m[Kconst size_t[m[K' {aka '[01m[Kconst long unsigned int[m[K'} [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wsign-compare-Wsign-compare]8;;[m[K]
+[14.688s]   180 |     if ([01;35m[KnFound < rbNpts[m[K) {
+[14.688s]       |         [01;35m[K~~~~~~~^~~~~~~~[m[K
+[14.688s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:193:23:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: '[01m[Kint[m[K' and '[01m[Kconst size_t[m[K' {aka '[01m[Kconst long unsigned int[m[K'} [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wsign-compare-Wsign-compare]8;;[m[K]
+[14.688s]   193 |     for (int i = 0; [01;35m[Ki < rbNpts[m[K; ++i) {
+[14.689s]       |                     [01;35m[K~~^~~~~~~~[m[K
+[15.203s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:[m[K In member function '[01m[Kbool librigidbodytracker::RigidBodyTracker::initializePosition(std::chrono::_V2::system_clock::time_point, pcl::PointCloud<pcl::PointXYZ>::ConstPtr)[m[K':
+[15.203s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:412:8:[m[K [01;35m[Kwarning: [m[Kunused variable '[01m[KtotalCost[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[15.203s]   412 |   long [01;35m[KtotalCost[m[K = assignment.solve(solution);
+[15.203s]       |        [01;35m[K^~~~~~~~~[m[K
+[15.204s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:[m[K In member function '[01m[Kvoid librigidbodytracker::RigidBodyTracker::updatePosition(std::chrono::_V2::system_clock::time_point, pcl::PointCloud<pcl::PointXYZ>::ConstPtr)[m[K':
+[15.204s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:466:25:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: '[01m[Kint[m[K' and '[01m[Kconst size_t[m[K' {aka '[01m[Kconst long unsigned int[m[K'} [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wsign-compare-Wsign-compare]8;;[m[K]
+[15.204s]   466 |   for (int iRb = 0; [01;35m[KiRb < numRigidBodies[m[K; ++iRb) {
+[15.204s]       |                     [01;35m[K~~~~^~~~~~~~~~~~~~~~[m[K
+[15.246s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/librigidbodytracker/src/rigid_body_tracker.cpp:521:8:[m[K [01;35m[Kwarning: [m[Kunused variable '[01m[KtotalCost[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[15.246s]   521 |   long [01;35m[KtotalCost[m[K = assignment.solve(solution);
+[15.246s]       |        [01;35m[K^~~~~~~~~[m[K
+[15.783s] [ 80%] [32m[1mLinking CXX static library libqualisys_cpp_sdk.a[0m
+[15.806s] [ 80%] Built target qualisys_cpp_sdk
+[25.295s] [ 82%] [32m[1mLinking CXX static library libViconDataStreamSDK_CPP.a[0m
+[25.345s] [ 82%] Built target ViconDataStreamSDK_CPP
+[25.356s] [ 87%] [32mBuilding CXX object deps/libmotioncapture/CMakeFiles/libmotioncapture.dir/src/qualisys.cpp.o[0m
+[25.356s] [ 88%] [32mBuilding CXX object deps/libmotioncapture/CMakeFiles/libmotioncapture.dir/src/optitrack.cpp.o[0m
+[25.357s] [ 88%] [32mBuilding CXX object deps/libmotioncapture/CMakeFiles/libmotioncapture.dir/src/testmocap.cpp.o[0m
+[25.357s] [ 90%] [32mBuilding CXX object deps/libmotioncapture/CMakeFiles/libmotioncapture.dir/src/motioncapture.cpp.o[0m
+[25.357s] [ 90%] [32mBuilding CXX object deps/libmotioncapture/CMakeFiles/libmotioncapture.dir/src/vicon.cpp.o[0m
+[25.357s] [ 91%] [32mBuilding CXX object deps/libmotioncapture/CMakeFiles/libmotioncapture.dir/src/vrpn.cpp.o[0m
+[25.358s] [ 93%] [32mBuilding CXX object deps/libmotioncapture/CMakeFiles/libmotioncapture.dir/src/fzmotion.cpp.o[0m
+[25.848s] [ 95%] [32m[1mLinking CXX static library liblibrigidbodytracker.a[0m
+[25.876s] [ 95%] Built target librigidbodytracker
+[27.224s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/optitrack.cpp:[m[K In member function '[01m[Kvoid libmotioncapture::MotionCaptureOptitrackImpl::parseModelDef(const char*)[m[K':
+[27.224s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/optitrack.cpp:66:11:[m[K [01;35m[Kwarning: [m[Kunused variable '[01m[Kminor[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[27.224s]    66 |       int [01;35m[Kminor[m[K = versionMinor;
+[27.224s]       |           [01;35m[K^~~~~[m[K
+[27.224s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/optitrack.cpp:[m[K In member function '[01m[Kvirtual void libmotioncapture::MotionCaptureOptitrack::waitForNextFrame()[m[K':
+[27.224s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/optitrack.cpp:653:14:[m[K [01;35m[Kwarning: [m[Kunused variable '[01m[KbTrackedModelsChanged[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[27.224s]   653 |         bool [01;35m[KbTrackedModelsChanged[m[K = (params & 0x02) != 0;         // 0x02 Actively tracked model list has changed
+[27.224s]       |              [01;35m[K^~~~~~~~~~~~~~~~~~~~~[m[K
+[27.551s] In file included from [01m[K/home/pcy/micromamba/envs/humble/include/boost/smart_ptr/detail/sp_thread_sleep.hpp:22[m[K,
+[27.551s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/smart_ptr/detail/yield_k.hpp:23[m[K,
+[27.551s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/smart_ptr/detail/spinlock_gcc_atomic.hpp:14[m[K,
+[27.551s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/smart_ptr/detail/spinlock.hpp:42[m[K,
+[27.551s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/smart_ptr/detail/spinlock_pool.hpp:25[m[K,
+[27.551s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/smart_ptr/shared_ptr.hpp:29[m[K,
+[27.551s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/shared_ptr.hpp:17[m[K,
+[27.551s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/date_time/time_clock.hpp:17[m[K,
+[27.552s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/date_time/posix_time/posix_time_types.hpp:10[m[K,
+[27.552s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/asio/time_traits.hpp:23[m[K,
+[27.552s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/asio/detail/timer_queue_ptime.hpp:22[m[K,
+[27.552s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/asio/detail/deadline_timer_service.hpp:31[m[K,
+[27.552s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/asio/basic_deadline_timer.hpp:25[m[K,
+[27.552s]                  from [01m[K/home/pcy/micromamba/envs/humble/include/boost/asio.hpp:27[m[K,
+[27.552s]                  from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/include/libmotioncapture/fzmotion.h:7[m[K,
+[27.552s]                  from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/fzmotion.cpp:1[m[K:
+[27.552s] [01m[K/home/pcy/micromamba/envs/humble/include/boost/bind.hpp:36:1:[m[K [01;36m[Knote: [m[K'[01m[K#pragma message: The practice of declaring the Bind placeholders (_1, _2, ...) in the global namespace is deprecated. Please use <boost/bind/bind.hpp> + using namespace boost::placeholders, or define BOOST_BIND_GLOBAL_PLACEHOLDERS to retain the current behavior.[m[K'
+[27.552s]    36 | [01;36m[KBOOST_PRAGMA_MESSAGE[m[K(
+[27.552s]       | [01;36m[K^~~~~~~~~~~~~~~~~~~~[m[K
+[27.566s] In file included from [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/fzmotion.cpp:1[m[K:
+[27.566s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/include/libmotioncapture/fzmotion.h:133:32:[m[K [01;35m[Kwarning: [m[KISO C++ prohibits anonymous structs [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wpedantic-Wpedantic]8;;[m[K]
+[27.566s]   133 |                         struct [01;35m[K{[m[K uint8 v1; uint8 v2; uint8 v3; uint8 v4; };
+[27.566s]       |                                [01;35m[K^[m[K
+[27.566s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/include/libmotioncapture/fzmotion.h:138:32:[m[K [01;35m[Kwarning: [m[KISO C++ prohibits anonymous structs [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wpedantic-Wpedantic]8;;[m[K]
+[27.566s]   138 |                         struct [01;35m[K{[m[K uint8 v1; uint8 v2; uint8 v3; uint8 v4; };
+[27.566s]       |                                [01;35m[K^[m[K
+[27.566s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/include/libmotioncapture/fzmotion.h:145:32:[m[K [01;35m[Kwarning: [m[KISO C++ prohibits anonymous structs [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wpedantic-Wpedantic]8;;[m[K]
+[27.566s]   145 |                         struct [01;35m[K{[m[K octet h1; octet h2; octet l1; octet l2; };
+[27.566s]       |                                [01;35m[K^[m[K
+[27.576s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/include/libmotioncapture/fzmotion.h:[m[K In constructor '[01m[Klibmotioncapture::MotionCaptureFZMotion::MotionCaptureFZMotion(const string&, int, const string&, int)[m[K':
+[27.576s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/include/libmotioncapture/fzmotion.h:165:29:[m[K [01;35m[Kwarning: [m[K'[01m[Klibmotioncapture::MotionCaptureFZMotion::m_ConnectionSocket[m[K' will be initialized after [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wreorder-Wreorder]8;;[m[K]
+[27.577s]   165 |                 udp::socket [01;35m[Km_ConnectionSocket[m[K;
+[27.577s]       |                             [01;35m[K^~~~~~~~~~~~~~~~~~[m[K
+[27.577s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/include/libmotioncapture/fzmotion.h:164:29:[m[K [01;35m[Kwarning: [m[K  '[01m[Kboost::asio::ip::udp::socket libmotioncapture::MotionCaptureFZMotion::m_TransmissionSocket[m[K' [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wreorder-Wreorder]8;;[m[K]
+[27.577s]   164 |                 udp::socket [01;35m[Km_TransmissionSocket[m[K;
+[27.577s]       |                             [01;35m[K^~~~~~~~~~~~~~~~~~~~[m[K
+[27.577s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/fzmotion.cpp:5:5:[m[K [01;35m[Kwarning: [m[K  when initialized here [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wreorder-Wreorder]8;;[m[K]
+[27.577s]     5 |     [01;35m[KMotionCaptureFZMotion[m[K::MotionCaptureFZMotion(
+[27.577s]       |     [01;35m[K^~~~~~~~~~~~~~~~~~~~~[m[K
+[27.594s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/fzmotion.cpp:[m[K In member function '[01m[Kvoid libmotioncapture::MotionCaptureFZMotion::receiveFrameData()[m[K':
+[27.594s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/fzmotion.cpp:297:9:[m[K [01;35m[Kwarning: [m[Klabel '[01m[Kboost[m[K' defined but not used [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-label-Wunused-label]8;;[m[K]
+[27.594s]   297 |         [01;35m[Kboost[m[K:system::error_code ec;
+[27.594s]       |         [01;35m[K^~~~~[m[K
+[27.598s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/fzmotion.cpp:[m[K In member function '[01m[Kvirtual const PointCloud& libmotioncapture::MotionCaptureFZMotion::pointCloud() const[m[K':
+[27.599s] [01m[K/home/pcy/Documents/ros2_ws/src/motion_capture_tracking/motion_capture_tracking/deps/libmotioncapture/src/fzmotion.cpp:416:32:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: '[01m[KEigen::EigenBase<Eigen::Matrix<float, -1, 3, 1> >::Index[m[K' {aka '[01m[Klong int[m[K'} and '[01m[Kstd::vector<libmotioncapture::LMarker>::size_type[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wsign-compare-Wsign-compare]8;;[m[K]
+[27.599s]   416 |         if ([01;35m[Kpointcloud_.size() != this->m_vctMarkData.size()[m[K) {
+[27.599s]       |             [01;35m[K~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[29.771s] [ 96%] [32m[1mLinking CXX static library liblibmotioncapture.a[0m
+[29.803s] [ 96%] Built target libmotioncapture
+[29.814s] [ 98%] [32mBuilding CXX object CMakeFiles/motion_capture_tracking_node.dir/src/motion_capture_tracking_node.cpp.o[0m
+[39.774s] [100%] [32m[1mLinking CXX executable motion_capture_tracking_node[0m
+[41.125s] [100%] Built target motion_capture_tracking_node
+[41.131s] Invoked command in '/home/pcy/Documents/ros2_ws/build/motion_capture_tracking' returned '0': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --build /home/pcy/Documents/ros2_ws/build/motion_capture_tracking -- -j16 -l16
+[41.157s] Invoking command in '/home/pcy/Documents/ros2_ws/build/motion_capture_tracking': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --install /home/pcy/Documents/ros2_ws/build/motion_capture_tracking
+[41.160s] -- Install configuration: ""
+[41.160s] -- Execute custom install script
+[41.161s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/lib/motion_capture_tracking/motion_capture_tracking_node
+[41.164s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking//launch/launch.py
+[41.167s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking//launch/node.launch
+[41.170s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking//config/cfg.yaml
+[41.173s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking//config/rviz.rviz
+[41.176s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/ament_index/resource_index/package_run_dependencies/motion_capture_tracking
+[41.179s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/ament_index/resource_index/parent_prefix_path/motion_capture_tracking
+[41.183s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/environment/ament_prefix_path.sh
+[41.186s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/environment/ament_prefix_path.dsv
+[41.189s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/environment/path.sh
+[41.192s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/environment/path.dsv
+[41.195s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/local_setup.bash
+[41.199s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/local_setup.sh
+[41.202s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/local_setup.zsh
+[41.205s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/local_setup.dsv
+[41.208s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/package.dsv
+[41.212s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/ament_index/resource_index/packages/motion_capture_tracking
+[41.217s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/cmake/motion_capture_trackingConfig.cmake
+[41.219s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/cmake/motion_capture_trackingConfig-version.cmake
+[41.223s] -- Symlinking: /home/pcy/Documents/ros2_ws/install/motion_capture_tracking/share/motion_capture_tracking/package.xml
+[41.232s] Invoked command in '/home/pcy/Documents/ros2_ws/build/motion_capture_tracking' returned '0': AMENT_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces:${CMAKE_PREFIX_PATH} CONDA_PROMPT_MODIFIER=(humble) LD_LIBRARY_PATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/pcy/Documents/ros2_ws/install/motion_capture_tracking_interfaces/lib/python3.10/site-packages:${PYTHONPATH} /home/pcy/micromamba/envs/humble/bin/cmake --install /home/pcy/Documents/ros2_ws/build/motion_capture_tracking
