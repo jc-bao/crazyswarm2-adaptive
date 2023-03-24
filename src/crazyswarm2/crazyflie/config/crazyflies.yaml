@@ -1,8 +1,8 @@
 # named list of all robots
 robots:
-  cf2:
+  cf4:
     enabled: true
-    uri: radio://0/80/2M/E7E7E7E702
+    uri: radio://0/80/2M/E7E7E7E704
     initial_position: [0, 0, 0]
     type: cf21  # see robot_types
     # firmware_params:
@@ -33,7 +33,7 @@ robot_types:
     motion_capture:
       enabled: true
       # only if enabled; see motion_capture.yaml
-      marker: default
+      marker: default_single_marker
       dynamics: default
     big_quad: false
     battery:

@@ -3,20 +3,20 @@
     type: "optitrack"
     hostname: "192.168.50.88"
 
-    mode: "motionCapture" # one of motionCapture,libRigidBodyTracker
+    mode: "libRigidBodyTracker" # one of motionCapture,libRigidBodyTracker
 
     marker_configurations:
       default: # for standard Crazyflie
         offset: [0.0, 0.0, 0.0]
         points:
-          p0: [ -0.01,  0.003, 0.022]  # top
-          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
-          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
-          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+          p0: [-0.050, -0.003, 0.026]  # top
+          p1: [0.025,  -0.004, -0.048]  # back left   (M3)
+          p2: [0.026, -0.005, 0.028]  # back right  (M2)
+          p3: [ -0.001, 0.012, -0.006]  # front right (M1)
       default_single_marker:
-        offset: [0.0, -0.01, -0.04]
+        offset: [0.0, 0.0, 0.0]
         points:
-          p0: [0.0177184,0.0139654,0.0557585]
+          p0: [0.0, 0.0, 0.0]
       mocap_deck:
         offset: [0.0, 0.0, -0.01]
         points:

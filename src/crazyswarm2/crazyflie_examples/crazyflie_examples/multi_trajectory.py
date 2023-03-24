@@ -19,7 +19,7 @@ def main():
         trajs.append(traj)
 
     TRIALS = 1
-    TIMESCALE = 1.0
+    TIMESCALE = 2.0
     for i in range(TRIALS):
         for idx, cf in enumerate(allcfs.crazyflies):
             cf.uploadTrajectory(0, 0, trajs[idx % len(trajs)])

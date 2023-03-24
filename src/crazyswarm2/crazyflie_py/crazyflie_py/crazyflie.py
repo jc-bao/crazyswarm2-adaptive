@@ -152,7 +152,7 @@ class Crazyflie:
 
         # self.cmdStopPublisher = rospy.Publisher(prefix + "/cmd_stop", std_msgs.msg.Empty, queue_size=1)
 
-        self.cmdVelPublisher = node.Publisher(
+        self.cmdVelPublisher = node.create_publisher(
             AngVel, f"{prefix}/cmd_vel", 1
         )
         self.cmdVelMsg = AngVel()
@@ -165,10 +165,11 @@ class Crazyflie:
         self.cmdPositionMsg.header.frame_id = "/world"
 
 
-        # self.cmdVelocityWorldPublisher = rospy.Publisher(prefix + "/cmd_velocity_world", VelocityWorld, queue_size=1)
-        # self.cmdVelocityWorldMsg = VelocityWorld()
-        # self.cmdVelocityWorldMsg.header.seq = 0
-        # self.cmdVelocityWorldMsg.header.frame_id = "/world"
+        self.cmdVelLegacyPublisher = node.create_publisher(
+            Twist, f"{prefix}/cmd_vel_legacy", 1
+        )
+        self.cmdVelLegacyMsg = Twist()
+        # self.cmdVelLegacyMsg.header.frame_id = "/world"
 
     # def setGroupMask(self, groupMask):
     #     """Sets the group mask bits for this robot.
@@ -594,6 +595,13 @@ class Crazyflie:
         self.cmdVelMsg.yaw_rate = yaw_rate
         self.cmdVelMsg.thrust = thrust
         self.cmdVelPublisher.publish(self.cmdVelMsg)
+
+    def cmdVelLegacy(self, roll, pitch, yaw_rate, thrust):
+        self.cmdVelLegacyMsg.linear.x = pitch
+        self.cmdVelLegacyMsg.linear.y = roll
+        self.cmdVelLegacyMsg.linear.z = float(thrust)
+        self.cmdVelLegacyMsg.angular.z = yaw_rate
+        self.cmdVelLegacyPublisher.publish(self.cmdVelLegacyMsg)
 
     def cmdPosition(self, pos, yaw = 0.):
         """Sends a streaming command of absolute position and yaw setpoint.
