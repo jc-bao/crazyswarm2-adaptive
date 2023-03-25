@@ -13,8 +13,8 @@ class Crazyflie:
     def __init__(self) -> None:
         
         # parameters
-        self.world_center = np.array([0.0, 0.0, 1.0])
-        self.mass = 0.03
+        self.world_center = np.array([0.0, 0.0, 1.3])
+        self.mass = 0.028
         self.obj_mass = 0.00
         self.g = 9.81
         self.command_timelimit = 10.0
@@ -198,10 +198,10 @@ class Crazyflie:
             target_roll_rate = action[0]
             target_pitch_rate = action[1]
             target_yaw_rate = action[2]
-            # self.rpy_target = np.array([target_roll, target_pitch, target_yaw_rate])
-            self.rpy_target[i] = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
+            # self.rpy_target[i] = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
+            self.vrpy_target[i] = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
             target_thrust = action[3]
-            self.allcfs.crazyflies[i].cmdVelLegacy(roll=target_roll_rate/np.pi*180, pitch=target_pitch_rate/np.pi*180, yaw_rate=target_yaw_rate/np.pi*180, thrust=self.thrust2cmd(target_thrust))
+            self.allcfs.crazyflies[i].cmdVelLegacy(roll_rate=target_roll_rate/np.pi*180, pitch_rate=target_pitch_rate/np.pi*180, yaw_rate=target_yaw_rate/np.pi*180, thrust=self.thrust2cmd(target_thrust))
         self.timeHelper.sleepForRate(self.rate)
         
         # observation
@@ -268,7 +268,7 @@ class Crazyflie:
             xyz_target = xyz_drone + delta_xyz_target
 
             gravity_drone = np.array([0.0, 0.0, -self.g * (self.mass+self.obj_mass)])
-            force_target = - gravity_drone - (xyz_drone - xyz_target) * np.array([0.2, 0.2, 0.2]) - (vxyz_drone - vxyz_target) * np.array([0.15, 0.15, 0.15])
+            force_target = - gravity_drone - (xyz_drone - xyz_target) * 0.2 - (vxyz_drone - vxyz_target) * 0.15
             rotmat_drone = np.array(tf3d.euler.euler2mat(rpy_drone[0], rpy_drone[1], rpy_drone[2]))
             total_force_drone_projected = (rotmat_drone@force_target)[2]
             thrust_pid = np.clip(total_force_drone_projected, 0.0, 0.6)
@@ -278,19 +278,19 @@ class Crazyflie:
             ctl_pitch_rate_pid = - (ctl_pitch_pid - rpy_drone[1]) * 4.0 + vrpy_drone[1] * 0.05
             ctl_yaw_rate_pid =  + (rpy_drone[2]) * 6.0 + vrpy_drone[2] * 0.00
         
-            act = np.array([ctl_roll_pid, ctl_pitch_pid, ctl_yaw_rate_pid, thrust_pid])
+            act = np.array([ctl_roll_rate_pid, ctl_pitch_rate_pid, ctl_yaw_rate_pid, thrust_pid])
             actions.append(act)
 
         return np.array(actions)
 
     def _generate_traj(self):
-        base_w = 2 * np.pi / 7.0
+        base_w = 2 * np.pi / 8.0
         t = np.arange(0, int(self.traj_timelimit*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((self.cf_num, len(t), 3))
         traj_vxyz = np.zeros((self.cf_num, len(t), 3))
 
-        As = np.array([[0.8, 0.0, 0.4], [0.8, 0.0, 0.4], [0.4, 0.4, 0.0]])
+        As = np.array([[0.6, 0.0, 0.3], [0.8, 0.0, 0.4], [0.4, 0.4, 0.0]])
         ws = np.array([[base_w, base_w, base_w*2.0], [base_w, base_w, base_w*2.0], [base_w*2.0, base_w*2.0, base_w]])
         phases = np.array([[np.pi/2,0,np.pi], [0.0, np.pi/2, np.pi], [0.0, np.pi/2, 0.0]])
 
@@ -319,11 +319,11 @@ class Logger():
 
     def log(self, obs):
         self.xyz_target.append(obs['xyz_target'])
-        self.rpy_target.append(obs['rpy_target'])
-        self.vrpy_target.append(obs['vrpy_target'])
+        self.rpy_target.append(obs['rpy_target'].copy())
+        self.vrpy_target.append(obs['vrpy_target'].copy())
         self.vxyz_target.append(obs['vxyz_target'])
         self.xyz_drone.append(obs['xyz_drone'])
-        self.rpy_drone.append(obs['rpy_drone'])
+        self.rpy_drone.append(obs['rpy_drone'].copy())
         self.vxyz_drone.append(obs['vxyz_drone'])
         self.vrpy_drone.append(obs['vrpy_drone'])
         self.xyz_drone_kf.append(obs['xyz_drone_kf'])
@@ -412,6 +412,7 @@ def main():
         else:
             info['xyz_target'] = target_point
             info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
+        # logger.log(info)
         action = cfctl.pid_controller(info) * 1.0
         obs, reward, done, info = cfctl.step(action)
 
@@ -424,10 +425,14 @@ def main():
         obs, reward, done, info = cfctl.step(action)
 
     print('main task')
-    obs, info = cfctl.soft_reset()
-    for _ in range(int(12.0 * cfctl.rate)):
-        # PID controller
-        action = cfctl.pid_controller(info) * 1.0
+    # obs, info = cfctl.soft_reset()
+    # for _ in range(int(12.0 * cfctl.rate)):
+    #     # PID controller
+    #     action = cfctl.pid_controller(info) * 1.0
+    #     logger.log(info)
+    #     obs, reward, done, info = cfctl.step(action)
+    for _ in range(int(1.0 * cfctl.rate)):
+        action[0] = np.array([1.0, 0.0, 0.0, 0.27])
         logger.log(info)
         obs, reward, done, info = cfctl.step(action)
 
@@ -438,6 +443,11 @@ def main():
         info['xyz_target'] = target_pos
         info['vxyz_target'] = np.zeros(3)
         action = cfctl.pid_controller(info)*1.0
+        obs, reward, done, info = cfctl.step(action)
+
+    for _ in range(int(1.0 * cfctl.rate)):
+        action[0] = np.array([1.0, 0.0, 0.0, 0.27])
+        logger.log(info)
         obs, reward, done, info = cfctl.step(action)
 
     print('landing...')

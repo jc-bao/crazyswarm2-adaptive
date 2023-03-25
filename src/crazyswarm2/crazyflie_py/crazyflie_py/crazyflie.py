@@ -596,9 +596,9 @@ class Crazyflie:
         self.cmdVelMsg.thrust = thrust
         self.cmdVelPublisher.publish(self.cmdVelMsg)
 
-    def cmdVelLegacy(self, roll, pitch, yaw_rate, thrust):
-        self.cmdVelLegacyMsg.linear.x = pitch
-        self.cmdVelLegacyMsg.linear.y = roll
+    def cmdVelLegacy(self, roll_rate, pitch_rate, yaw_rate, thrust):
+        self.cmdVelLegacyMsg.linear.x = pitch_rate
+        self.cmdVelLegacyMsg.linear.y = roll_rate
         self.cmdVelLegacyMsg.linear.z = float(thrust)
         self.cmdVelLegacyMsg.angular.z = yaw_rate
         self.cmdVelLegacyPublisher.publish(self.cmdVelLegacyMsg)

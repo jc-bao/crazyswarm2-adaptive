@@ -15,15 +15,18 @@ robots:
     uri: radio://0/80/2M/E7E7E7E704
     initial_position: [0, 0, 0]
     type: cf21  # see robot_types
-    # firmware_params:
-    #   kalman:
-    #     pNAcc_xy: 1.0 # default 0.5
-    # firmware_logging:
-    #   enabled: true
-    #   custom_topics:
-    #     topic_name3: 
-    #       frequency: 1
-    #       vars: ["acc.x", "acc.y"]
+    firmware_params:
+      pid_rate:
+        roll_kp: 250 # default 250
+        roll_ki: 500 # default 500
+        roll_kd: 2.5 # default 2.5
+        pitch_kp: 250 # default 250
+        pitch_ki: 500 # default 500
+        pitch_kd: 2.5 # default 2.5
+      flightmode:
+        stabModeRoll: 0
+        stabModePitch: 0
+        stabModeYaw: 0
   # cf5:
   #   enabled: false
   #   uri: radio://0/80/2M/E7E7E7E705
