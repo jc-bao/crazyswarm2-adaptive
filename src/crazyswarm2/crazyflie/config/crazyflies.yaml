@@ -1,9 +1,14 @@
 # named list of all robots
 robots:
-  cf2:
-    enabled: true
-    uri: radio://0/80/2M/E7E7E7E702
+  cf1:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E701
     initial_position: [0, -1, 0]
+    type: cf21  # see robot_types
+  cf2:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E702
+    initial_position: [0, 1, 0]
     type: cf21  # see robot_types
   cf4:
     enabled: true

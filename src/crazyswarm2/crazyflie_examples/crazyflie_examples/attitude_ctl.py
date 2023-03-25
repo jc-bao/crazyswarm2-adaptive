@@ -199,7 +199,7 @@ class Crazyflie:
             target_pitch_rate = action[1]
             target_yaw_rate = action[2]
             # self.rpy_target = np.array([target_roll, target_pitch, target_yaw_rate])
-            self.vrpy_target = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
+            self.rpy_target[i] = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
             target_thrust = action[3]
             self.allcfs.crazyflies[i].cmdVelLegacy(roll=target_roll_rate/np.pi*180, pitch=target_pitch_rate/np.pi*180, yaw_rate=target_yaw_rate/np.pi*180, thrust=self.thrust2cmd(target_thrust))
         self.timeHelper.sleepForRate(self.rate)
@@ -284,15 +284,15 @@ class Crazyflie:
         return np.array(actions)
 
     def _generate_traj(self):
-        base_w = 2 * np.pi / 6.0
+        base_w = 2 * np.pi / 7.0
         t = np.arange(0, int(self.traj_timelimit*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((self.cf_num, len(t), 3))
         traj_vxyz = np.zeros((self.cf_num, len(t), 3))
 
-        As = np.array([[0.8, 0.0, 0.4], [0.0, 0.8, 0.4], [0.4, 0.4, 0.0]])
-        ws = np.array([[base_w, base_w, base_w*2.0]]*2)
-        phases = np.array([[0,0,0], [0.0, np.pi/2, np.pi], [0.0, 0.0, 0.0]])
+        As = np.array([[0.8, 0.0, 0.4], [0.8, 0.0, 0.4], [0.4, 0.4, 0.0]])
+        ws = np.array([[base_w, base_w, base_w*2.0], [base_w, base_w, base_w*2.0], [base_w*2.0, base_w*2.0, base_w]])
+        phases = np.array([[np.pi/2,0,np.pi], [0.0, np.pi/2, np.pi], [0.0, np.pi/2, 0.0]])
 
         for i in range(self.cf_num):
             A = As[i]
@@ -300,7 +300,7 @@ class Crazyflie:
             phase = phases[i]
             traj_xyz[i] = A * np.sin(t*w+phase)
             traj_vxyz[i] = w * A * np.cos(t*w+phase)
-            traj_xyz[i] = self.world_center
+            traj_xyz[i] += self.world_center
 
         return traj_xyz, traj_vxyz
 
@@ -344,67 +344,47 @@ class Logger():
 
         # plot
         # create 3*4 subplot
+        cf_num = self.xyz_target.shape[1]
         fig, axs = plt.subplots(nrows=3, ncols=4, figsize=(20, 9))
         title_list = ['x','y','z']
         for i in range(3):
             ax = axs[i, 0]
-            ax.plot(self.xyz_target[:, i], label='target', linestyle='--')
-            ax.plot(self.xyz_drone[:, i], label='drone')
-            ax.plot(self.xyz_drone_kf[:, i], label='drone_kf')
+            for j in range(cf_num):
+                ax.plot(self.xyz_target[:, j, i], label=f'target{j}', linestyle='--')
+                ax.plot(self.xyz_drone[:, j, i], label=f'drone{j}')
+                ax.plot(self.xyz_drone_kf[:, j, i], label=f'drone_kf{j}')
             ax.set_ylabel(title_list[i])
             ax.legend()
         title_list = ['roll', 'pitch', 'yaw']
         for i in range(3):
             ax = axs[i, 1]
-            ax.plot(self.rpy_target[:, i], label='target', linestyle='--')
-            ax.plot(self.rpy_drone[:, i], label='drone')
-            ax.plot(self.rpy_drone_kf[:, i], label='drone_kf')
+            for j in range(cf_num):
+                ax.plot(self.rpy_target[:, j, i], label=f'target{j}', linestyle='--')
+                ax.plot(self.rpy_drone[:, j, i], label=f'drone{j}')
+                ax.plot(self.rpy_drone_kf[:, j, i], label=f'drone_kf{j}')
             ax.set_ylabel(title_list[i])
             ax.legend()
         title_list = ['vx', 'vy', 'vz']
         for i in range(3):
             ax = axs[i, 2]
-            ax.plot(self.vxyz_target[:, i], label='target', linestyle='--')
-            ax.plot(self.vxyz_drone[:, i], label='drone')
+            for j in range(cf_num):
+                ax.plot(self.vxyz_target[:, j, i], label=f'target{j}', linestyle='--')
+                ax.plot(self.vxyz_drone[:, j, i], label=f'drone{j}')
             ax.set_ylabel(title_list[i])
             ax.legend()
         title_list = ['vr', 'vp', 'vy']
         for i in range(3):
             ax = axs[i, 3]
-            ax.plot(self.vrpy_drone[:, i], label='drone')
-            ax.plot(self.vrpy_target[:, i], label='target', linestyle='--')
+            for j in range(cf_num):
+                ax.plot(self.vrpy_target[:, j, i], label=f'target{j}', linestyle='--')
+                ax.plot(self.vrpy_drone[:, j, i], label=f'drone{j}')
             ax.set_ylabel(title_list[i])
             ax.legend()
 
         # plt.show()
         print('mocap drift fix value: ', -self.rpy_drone.mean(axis=0))
-        plt.savefig('results/plot.png')
+        plt.savefig('/home/pcy/Documents/ros2_ws/src/crazyswarm2/crazyflie_examples/crazyflie_examples/results/plot.png')
 
-        # save all values as a csv file with pandas
-        df = pd.DataFrame({
-            'x_target': self.xyz_target[:, 0],
-            'y_target': self.xyz_target[:, 1],
-            'z_target': self.xyz_target[:, 2],
-            'roll_target': self.rpy_target[:, 0],
-            'pitch_target': self.rpy_target[:, 1],
-            'yaw_target': self.rpy_target[:, 2],
-            'vx_target': self.vxyz_target[:, 0],
-            'vy_target': self.vxyz_target[:, 1],
-            'vz_target': self.vxyz_target[:, 2],
-            'x_drone': self.xyz_drone[:, 0],
-            'y_drone': self.xyz_drone[:, 1],
-            'z_drone': self.xyz_drone[:, 2],
-            'roll_drone': self.rpy_drone[:, 0],
-            'pitch_drone': self.rpy_drone[:, 1],
-            'yaw_drone': self.rpy_drone[:, 2],
-            'vx_drone': self.vxyz_drone[:, 0],
-            'vy_drone': self.vxyz_drone[:, 1],
-            'vz_drone': self.vxyz_drone[:, 2],
-            'vr_drone': self.vrpy_drone[:, 0],
-            'vp_drone': self.vrpy_drone[:, 1],
-            'vy_drone': self.vrpy_drone[:, 2],
-        })
-        df.to_csv('results/data.csv', index=False)
     
 def main():
 
@@ -435,37 +415,38 @@ def main():
         action = cfctl.pid_controller(info) * 1.0
         obs, reward, done, info = cfctl.step(action)
 
-    # target_point = cfctl.traj_xyz[0]
-    # print('go to center', target_point)
-    # for _ in range(int(4.0 * cfctl.rate)):
-    #     info['xyz_target'] = target_point
-    #     info['vxyz_target'] = np.zeros(3)
-    #     action = cfctl.pid_controller(info) * 1.0
-    #     obs, reward, done, info = cfctl.step(action)
+    target_point = cfctl.traj_xyz[:,0]
+    print('go to center', target_point)
+    for _ in range(int(4.0 * cfctl.rate)):
+        info['xyz_target'] = target_point
+        info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
+        action = cfctl.pid_controller(info) * 1.0
+        obs, reward, done, info = cfctl.step(action)
 
-    # print('main task')
-    # obs, info = cfctl.soft_reset()
-    # for _ in range(int(12.0 * cfctl.rate)):
-    #     # PID controller
-    #     action = cfctl.pid_controller(info) * 1.0
-    #     obs, reward, done, info = cfctl.step(action)
+    print('main task')
+    obs, info = cfctl.soft_reset()
+    for _ in range(int(12.0 * cfctl.rate)):
+        # PID controller
+        action = cfctl.pid_controller(info) * 1.0
+        logger.log(info)
+        obs, reward, done, info = cfctl.step(action)
 
-    # print('to world center...')
-    # for _ in range(int(3.0*cfctl.rate)):
-    #     info['xyz_target'] = cfctl.world_center.copy()
-    #     info['vxyz_target'] = np.zeros(3)
-    #     action = cfctl.pid_controller(info)*1.0
-    #     # logger.log(info)
-    #     obs, reward, done, info = cfctl.step(action)
+    print('to world center...')
+    target_pos = np.array([cfctl.world_center]*cfctl.cf_num)
+    target_pos[:, 0] = np.arange(cfctl.cf_num) - (cfctl.cf_num-1)/2.0
+    for _ in range(int(3.0*cfctl.rate)):
+        info['xyz_target'] = target_pos
+        info['vxyz_target'] = np.zeros(3)
+        action = cfctl.pid_controller(info)*1.0
+        obs, reward, done, info = cfctl.step(action)
 
     print('landing...')
     target_point = cfctl.last_xyz_drone.copy()
-    target_point[:, 2] = 0.05
+    target_point[:, 2] = 0.02
     for _ in range(int(2.0*cfctl.rate)):
         info['xyz_target'] = target_point
         info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
         action = cfctl.pid_controller(info)*1.0
-        # logger.log(info)
         obs, reward, done, info = cfctl.step(action)
 
 
