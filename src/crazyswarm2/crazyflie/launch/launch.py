@@ -39,7 +39,7 @@ def generate_launch_description():
         motion_capture = yaml.safe_load(ymlfile)
 
     motion_capture_params = motion_capture["/motion_capture_tracking"]["ros__parameters"]
-    motion_capture_params["rigid_bodies"] = dict()
+    # motion_capture_params["rigid_bodies"] = {}
     for key, value in crazyflies["robots"].items():
         type = crazyflies["robot_types"][value["type"]]
         if value["enabled"] and type["motion_capture"]["enabled"]:
