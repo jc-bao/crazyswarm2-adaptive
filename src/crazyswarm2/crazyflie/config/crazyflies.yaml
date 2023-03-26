@@ -15,31 +15,6 @@ robots:
     uri: radio://0/80/2M/E7E7E7E704
     initial_position: [0, 0, 0]
     type: cf21  # see robot_types
-    firmware_params:
-      pid_rate:
-        roll_kp: 250 # default 250
-        roll_ki: 500 # default 500
-        roll_kd: 2.5 # default 2.5
-        pitch_kp: 250 # default 250
-        pitch_ki: 500 # default 500
-        pitch_kd: 2.5 # default 2.5
-      flightmode:
-        stabModeRoll: 0
-        stabModePitch: 0
-        stabModeYaw: 0
-  # cf5:
-  #   enabled: false
-  #   uri: radio://0/80/2M/E7E7E7E705
-  #   initial_position: [0, -0.5, 0]
-  #   type: cf21  # see robot_types
-    # firmware_params:
-    #   kalman:
-    #     pNAcc_xy: 1.0 # default 0.5
-    #firmware_logging:
-    #  custom_topics:
-    #    topic_name3: 
-    #      frequency: 1
-    #      vars: ["acc.x", "acc.y", "acc.z"]
 # Definition of the various robot types
 robot_types:
   cf21:
@@ -52,33 +27,18 @@ robot_types:
     battery:
       voltage_warning: 3.8  # V
       voltage_critical: 3.7 # V
-    # firmware_params:
-    #   kalman:
-    #     pNAcc_xy: 1.0 # default 0.5
-    #firmware_logging:
-    #   enabled: true
-    #   default_topics:
-    #   pose:
-    #     frequency: 1 # Hz
-    #   custom_topics:
-    #    topic_name3: 
-    #      frequency: 1
-    #      vars: ["acc.x", "acc.y", "acc.z"]
-
-  cf21_mocap_deck:
-    motion_capture:
-      enabled: true
-      # only if enabled; see motion_capture.yaml
-      marker: mocap_deck
-      dynamics: default
-    big_quad: false
-    battery:
-      voltage_warning: 3.8  # V
-      voltage_critical: 3.7 # V
-
-    # firmware_params:
-    #   kalman:
-    #     pNAcc_xy: 1.0 # default 0.5
+    firmware_params:
+      pid_rate:
+        roll_kp: 250 # default 250
+        roll_ki: 500 # default 500
+        roll_kd: 2.5 # default 2.5
+        pitch_kp: 250 # default 250
+        pitch_ki: 500 # default 500
+        pitch_kd: 2.5 # default 2.5
+      flightmode:
+        stabModeRoll: 0
+        stabModePitch: 0
+        stabModeYaw: 0
 
 # global settings for all robots
 all:
@@ -104,18 +64,12 @@ all:
       enHighLevel: 1
     stabilizer:
       estimator: 2 # 1: complementary, 2: kalman
-      controller: 2 # 1: PID, 2: mellinger
-    # ring:
-    #   effect: 16 # 6: double spinner, 7: solid color, 16: packetRate
-    #   solidBlue: 255 # if set to solid color
-    #   solidGreen: 0 # if set to solid color
-    #   solidRed: 0 # if set to solid color
-    #   headlightEnable: 0
+      controller: 1 # 1: PID, 2: mellinger
     locSrv:
       extPosStdDev: 1e-3
       extQuatStdDev: 0.5e-1
-    # kalman:
-    #   resetEstimation: 1
+    kalman:
+      resetEstimation: 1
   broadcasts:
     num_repeats: 15 # number of times broadcast commands are repeated
     delay_between_repeats_ms: 1 # delay in milliseconds between individual repeats
