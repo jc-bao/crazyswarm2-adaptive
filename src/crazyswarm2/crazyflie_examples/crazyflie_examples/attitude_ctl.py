@@ -13,8 +13,8 @@ class Crazyflie:
     def __init__(self) -> None:
         
         # parameters
-        self.world_center = np.array([0.0, 0.0, 1.3])
-        self.mass = 0.028
+        self.world_center = np.array([0.0, 0.0, 1.0])
+        self.mass = 0.030
         self.obj_mass = 0.00
         self.g = 9.81
         self.command_timelimit = 10.0
@@ -268,7 +268,7 @@ class Crazyflie:
             xyz_target = xyz_drone + delta_xyz_target
 
             gravity_drone = np.array([0.0, 0.0, -self.g * (self.mass+self.obj_mass)])
-            force_target = - gravity_drone - (xyz_drone - xyz_target) * 0.2 - (vxyz_drone - vxyz_target) * 0.1
+            force_target = - gravity_drone - (xyz_drone - xyz_target) * 0.2 * np.array([1.0, 1.0, 1.1]) - (vxyz_drone - vxyz_target) *  np.array([1.0, 1.0, 1.1]) * 0.1
             rotmat_drone = np.array(tf3d.euler.euler2mat(rpy_drone[0], rpy_drone[1], rpy_drone[2]))
             total_force_drone_projected = (rotmat_drone@force_target)[2]
             thrust_pid = np.clip(total_force_drone_projected, 0.0, 0.6)
@@ -284,15 +284,15 @@ class Crazyflie:
         return np.array(actions)
 
     def _generate_traj(self):
-        base_w = 2 * np.pi / 8.0
+        base_w = 2 * np.pi / 6.0
         t = np.arange(0, int(self.traj_timelimit*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((self.cf_num, len(t), 3))
         traj_vxyz = np.zeros((self.cf_num, len(t), 3))
 
-        As = np.array([[0.6, 0.0, 0.3], [0.8, 0.0, 0.4], [0.4, 0.4, 0.0]])
+        As = np.array([[1.0, 1.0, 0.2], [0.8, 0.0, 0.4], [0.4, 0.4, 0.0]])
         ws = np.array([[base_w, base_w, base_w*2.0], [base_w, base_w, base_w*2.0], [base_w*2.0, base_w*2.0, base_w]])
-        phases = np.array([[np.pi/2,0,np.pi], [0.0, np.pi/2, np.pi], [0.0, np.pi/2, 0.0]])
+        phases = np.array([[np.pi/2,0.0,np.pi], [0.0, np.pi/2, np.pi], [0.0, np.pi/2, 0.0]])
 
         for i in range(self.cf_num):
             A = As[i]
@@ -416,30 +416,27 @@ def main():
         action = cfctl.pid_controller(info) * 1.0
         obs, reward, done, info = cfctl.step(action)
 
-    # for cf in cfctl.allcfs.crazyflies:
-    #     cf.emergency()
-
-    # target_point = cfctl.traj_xyz[:,0]
-    # print('go to center', target_point)
-    # for _ in range(int(4.0 * cfctl.rate)):
-    #     info['xyz_target'] = target_point
-    #     info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
-    #     action = cfctl.pid_controller(info) * 1.0
-    #     obs, reward, done, info = cfctl.step(action)
+    target_point = cfctl.traj_xyz[:,0]
+    print('go to center', target_point)
+    for _ in range(int(4.0 * cfctl.rate)):
+        info['xyz_target'] = target_point
+        info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
+        action = cfctl.pid_controller(info) * 1.0
+        obs, reward, done, info = cfctl.step(action)
 
     print('main task')
-    # obs, info = cfctl.soft_reset()
-    # for _ in range(int(12.0 * cfctl.rate)):
-    #     # PID controller
-    #     action = cfctl.pid_controller(info) * 1.0
-    #     logger.log(info)
-    #     obs, reward, done, info = cfctl.step(action)
-    for _ in range(int(1.0 * cfctl.rate)):
-        rpy = info['rpy_drone'][0]
-        xyz = info['xyz_drone'][0]
-        action[0] = np.array([0.1, -rpy[1]*4.0, rpy[2]*6.0, 0.27 + (1.3 - xyz[2]) * 0.2])
+    obs, info = cfctl.soft_reset()
+    for _ in range(int(12.0 * cfctl.rate)):
+        # PID controller
+        action = cfctl.pid_controller(info) * 1.0
         logger.log(info)
         obs, reward, done, info = cfctl.step(action)
+    # for _ in range(int(1.0 * cfctl.rate)):
+    #     rpy = info['rpy_drone'][0]
+    #     xyz = info['xyz_drone'][0]
+    #     action[0] = np.array([0.1, -rpy[1]*4.0, rpy[2]*6.0, 0.27 + (1.3 - xyz[2]) * 0.2])
+    #     logger.log(info)
+    #     obs, reward, done, info = cfctl.step(action)
 
     print('to world center...')
     target_pos = np.array([cfctl.world_center]*cfctl.cf_num)
@@ -451,15 +448,15 @@ def main():
         # logger.log(info)
         obs, reward, done, info = cfctl.step(action)
 
-    for _ in range(int(1.0 * cfctl.rate)):
-        rpy = info['rpy_drone'][0]
-        xyz = info['xyz_drone'][0]
-        action[0] = np.array([0.1, -rpy[1]*4.0, rpy[2]*6.0, 0.27 + (1.3 - xyz[2]) * 0.2])
-        logger.log(info)
-        obs, reward, done, info = cfctl.step(action)
+    # for _ in range(int(1.0 * cfctl.rate)):
+    #     rpy = info['rpy_drone'][0]
+    #     xyz = info['xyz_drone'][0]
+    #     action[0] = np.array([0.1, -rpy[1]*4.0, rpy[2]*6.0, 0.27 + (1.3 - xyz[2]) * 0.2])
+    #     logger.log(info)
+    #     obs, reward, done, info = cfctl.step(action)
 
     print('landing...')
-    target_point = np.array([cfctl.world_center]*cfctl.cf_num)
+    target_point = cfctl.last_xyz_drone.copy()
     target_point[:, 2] = 0.05
     for _ in range(int(2.0*cfctl.rate)):
         info['xyz_target'] = target_point
