@@ -68,6 +68,12 @@ class Crazyflie:
             func = getattr(self, f'state_callback_{cf.prefix[1:]}')
             self.allcfs.create_subscription(PoseStamped, f'{cf.prefix}/pose', func, 10)
 
+        # initialize publisher
+        self.pose_pub = self.allcfs.create_publisher(PoseStamped, 'cmd_pose', 10)
+        self.target_pub = self.allcfs.create_publisher(PoseStamped, 'target_pose', 10)
+        self.msg = PoseStamped()
+        self.msg.header.frame_id = 'world'
+
     def state_callback(self, data):
         pos = data.pose.position
         quat = data.pose.orientation
@@ -110,12 +116,20 @@ class Crazyflie:
         pos = trans_mocap.transform.translation
         return np.array([pos.x, pos.y, pos.z])
 
+    def set_attirate(self, vrpy_target, thrust_target):
+        # convert to degree
+        vrpy_target = vrpy_target / np.pi * 180.0
+        acc_z_target = thrust_target / self.mass 
+        for i, cf in enumerate(self.allcfs.crazyflies):
+            vrpy = vrpy_target[i]
+            acc_z = acc_z_target[i]
+            cf.cmdFullState(
+                np.zeros(3),np.zeros(3),np.array([0,0,acc_z]),np.zeros(3), vrpy)
     
     def reset(self):
         for _ in range(10):
-            for cf in self.allcfs.crazyflies:
-                cf.cmdVelLegacy(0.0, 0.0, 0.0, 0)
-                self.timeHelper.sleepForRate(10.0)
+            self.set_attirate(np.zeros([self.cf_num, 3]), np.zeros(self.cf_num))
+            self.timeHelper.sleepForRate(10.0)
         return self.soft_reset()
 
     def soft_reset(self):
@@ -213,6 +227,7 @@ class Crazyflie:
         self.target_pub.publish(pose)
         
     def step(self, actions):
+        thrust_target = np.zeros(self.cf_num)
         for i in range(self.cf_num):
             action = actions[i]
             target_roll_rate = action[0]
@@ -220,8 +235,9 @@ class Crazyflie:
             target_yaw_rate = action[2]
             # self.rpy_target[i] = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
             self.vrpy_target[i] = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
-            target_thrust = action[3]
-            self.allcfs.crazyflies[i].cmdVelLegacy(roll_rate=target_roll_rate/np.pi*180, pitch_rate=target_pitch_rate/np.pi*180, yaw_rate=target_yaw_rate/np.pi*180, thrust=self.thrust2cmd(target_thrust))
+            thrust_target[i] = action[3]
+            # self.allcfs.crazyflies[i].cmdVelLegacy(roll_rate=target_roll_rate/np.pi*180, pitch_rate=target_pitch_rate/np.pi*180, yaw_rate=target_yaw_rate/np.pi*180, thrust=self.thrust2cmd(target_thrust))
+        self.set_attirate(self.vrpy_target, thrust_target)
         self.timeHelper.sleepForRate(self.rate)
         
         # observation

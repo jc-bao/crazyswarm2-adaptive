@@ -6,12 +6,12 @@ robots:
     initial_position: [0, -1, 0]
     type: cf21  # see robot_types
   cf2:
-    enabled: false
+    enabled: true
     uri: radio://0/80/2M/E7E7E7E702
-    initial_position: [0, 1, 0]
+    initial_position: [0.5, 0, 0]
     type: cf21  # see robot_types
   cf4:
-    enabled: true
+    enabled: false
     uri: radio://0/80/2M/E7E7E7E704
     initial_position: [0, 0, 0]
     type: cf21  # see robot_types
@@ -72,7 +72,7 @@ all:
       enHighLevel: 1
     stabilizer:
       estimator: 2 # 1: complementary, 2: kalman
-      controller: 1 # 1: PID, 2: mellinger
+      controller: 3 # 1: PID, 2: mellinger 3: brescianini
     locSrv:
       extPosStdDev: 1e-3
       extQuatStdDev: 0.5e-1
