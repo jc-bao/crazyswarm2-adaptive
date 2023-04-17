@@ -15,9 +15,9 @@ class Crazyflie:
         np.set_printoptions(precision=3, suppress=True)
         
         # parameters
-        self.world_center = np.array([0.5, 0.0, 1.6])
-        self.mass = 0.000
-        self.obj_mass = 0.0088
+        self.world_center = np.array([0.5, 0.0, 1.5])
+        self.mass = 0.027
+        self.obj_mass = 0.0088 * 0.0 # set obj mass to 0 to disable
         self.rope_length = 0.31
         self.g = 9.81
         self.command_timelimit = 10.0
@@ -41,7 +41,7 @@ class Crazyflie:
         # control parameters
         self.max_vel = 6.0
         self.rate = 10.0
-        self.xyz_min = np.array([-2.0, -3.0, -1.7])
+        self.xyz_min = np.array([-2.0, -3.0, -2.0])
         self.xyz_max = np.array([2.0, 2.0, 1.5])
 
         # initialize parameters
@@ -60,7 +60,7 @@ class Crazyflie:
         self.rpy_target = np.zeros([self.cf_num, 3])
         self.vrpy_target = np.zeros([self.cf_num, 3])
         self.last_xyz_obj = np.zeros(3)
-        self.xyz_obj = np.zeros(3)
+        self.xyz_obj = np.array([0.0, 0.0, -self.rope_length])
         self.vxyz_obj = np.zeros(3)
 
         # ROS related initialization
@@ -110,7 +110,8 @@ class Crazyflie:
 
     def get_obj_state(self):
         if self.obj_mass < 1e-4:
-            xyz_obj = self.xyz_drone[0]
+            xyz_obj = self.xyz_drone[0].copy()
+            xyz_obj[2] -= self.rope_length
             return xyz_obj
         trans_mocap = self.tf_buffer.lookup_transform('world', 'obj', rclpy.time.Time())
         pos = trans_mocap.transform.translation
@@ -124,7 +125,7 @@ class Crazyflie:
             vrpy = vrpy_target[i]
             acc_z = acc_z_target[i]
             cf.cmdFullState(
-                np.zeros(3),np.zeros(3),np.array([0,0,acc_z]),np.zeros(3), vrpy)
+                np.zeros(3),np.zeros(3),np.array([0,0,acc_z]), 0.0, vrpy)
     
     def reset(self):
         for _ in range(10):
@@ -481,14 +482,14 @@ def main():
         obs, reward, done, info = cfctl.step(action)
 
 
-    target_point = cfctl.traj_xyz[:,0]
-    print('go to center', target_point)
-    for _ in range(int(4.0 * 10.0 * cfctl.rate)):
-        info['xyz_target'] = target_point
-        info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
-        logger.log(info)
-        action = cfctl.pid_controller(info) * 1.0
-        obs, reward, done, info = cfctl.step(action)
+    # target_point = cfctl.traj_xyz[:,0]
+    # print('go to center', target_point)
+    # for _ in range(int(4.0 * 10.0 * cfctl.rate)):
+    #     info['xyz_target'] = target_point
+    #     info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
+    #     logger.log(info)
+    #     action = cfctl.pid_controller(info) * 1.0
+    #     obs, reward, done, info = cfctl.step(action)
 
     # print('main task')
     # obs, info = cfctl.soft_reset()
@@ -505,15 +506,15 @@ def main():
     #     logger.log(info)
     #     obs, reward, done, info = cfctl.step(action)
 
-    print('to world center...')
-    target_pos = np.array([cfctl.world_center]*cfctl.cf_num)
-    target_pos[:, 0] = np.arange(cfctl.cf_num) - (cfctl.cf_num-1)/2.0
-    for _ in range(int(3.0*cfctl.rate)):
-        info['xyz_target'] = target_pos
-        info['vxyz_target'] = np.zeros(3)
-        action = cfctl.pid_controller(info)*1.0
-        # logger.log(info)
-        obs, reward, done, info = cfctl.step(action)
+    # print('to world center...')
+    # target_pos = np.array([cfctl.world_center]*cfctl.cf_num)
+    # target_pos[:, 0] = np.arange(cfctl.cf_num) - (cfctl.cf_num-1)/2.0
+    # for _ in range(int(3.0*cfctl.rate)):
+    #     info['xyz_target'] = target_pos
+    #     info['vxyz_target'] = np.zeros(3)
+    #     action = cfctl.pid_controller(info)*1.0
+    #     # logger.log(info)
+    #     obs, reward, done, info = cfctl.step(action)
 
     # for _ in range(int(1.0 * cfctl.rate)):
     #     rpy = info['rpy_drone'][0]

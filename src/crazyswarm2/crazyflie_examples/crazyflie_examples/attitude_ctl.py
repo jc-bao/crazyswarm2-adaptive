@@ -212,6 +212,7 @@ class Crazyflie:
         # Publish the PoseStamped message to the /target topic
         self.target_pub.publish(pose)
         
+
     def step(self, actions):
         for i in range(self.cf_num):
             action = actions[i]

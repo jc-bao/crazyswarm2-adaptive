@@ -7,6 +7,9 @@ This is a fork of the Crazyswarm2 project. The goal of this fork is to make the 
 ```shell
 # build
 colcon build --symlink-install
+
+# run server
+ros2 run crazyswarm2 launch.py
 ```
 
 ## Update Notes
