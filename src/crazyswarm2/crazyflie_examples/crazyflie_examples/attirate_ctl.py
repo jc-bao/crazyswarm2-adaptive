@@ -43,6 +43,24 @@ class Crazyflie:
         self.rate = 10.0
         self.xyz_min = np.array([-2.0, -3.0, -2.0])
         self.xyz_max = np.array([2.0, 2.0, 1.5])
+        ones = np.ones([self.cf_num, 3])
+        zeros = np.zeros([self.cf_num, 3])
+        self.pos_controller = PIDController(
+            kp=ones*16.0,
+            ki=ones*0.0,
+            kd=ones*6.0,
+            ki_max=ones*100.0,
+            integral=zeros,
+            last_error=zeros
+        )
+        self.attitude_controller = PIDController(
+            kp=ones*20.0,
+            ki=ones*0.0,
+            kd=ones*0.0,
+            ki_max=ones*100.0,
+            integral=zeros,
+            last_error=zeros
+        )
 
         # initialize parameters
         self.step_cnt = 0
@@ -120,7 +138,7 @@ class Crazyflie:
     def set_attirate(self, vrpy_target, thrust_target):
         # convert to degree
         vrpy_target = vrpy_target / np.pi * 180.0
-        acc_z_target = thrust_target / self.mass 
+        acc_z_target = thrust_target / self.mass
         for i, cf in enumerate(self.allcfs.crazyflies):
             vrpy = vrpy_target[i]
             acc_z = acc_z_target[i]
@@ -286,6 +304,34 @@ class Crazyflie:
         for cf in self.allcfs.crazyflies:
             cf.emergency()
         raise ValueError
+    
+    def policy_pos(self, pos_target):
+        # Drone-level controller
+        xyz_drone_target = pos_target 
+        delta_pos_drones = xyz_drone_target - self.xyz_drone
+        target_force_drone = self.mass*self.pos_controller.update(
+            delta_pos_drones, 0.1) - (self.mass) * np.array([0.0, 0.0, -self.g])
+        rotmat_drone = geom.quat2rotmat(self.quat_drones)
+        thrust_desired = (
+            np.inverse(rotmat_drone)@target_force_drone.unsqueeze(-1)).squeeze(-1)
+        thrust = np.norm(thrust_desired, dim=-1)
+        desired_rotvec = np.zeros(
+            [self.env_num, self.drone_num, 3], device=self.device)
+        desired_rotvec[:, :, 2] = 1.0
+
+        # DEBUG
+        # rpy_target = np.tensor([[[1.0, 0.0, 0.0]]], device=self.device)
+        # quat_target = geom.rpy2quat(rpy_target)
+        # quat_error = geom.quat_mul(
+        #     quat_target, geom.quat_inv(self.quat_drones))
+        # rot_err = quat_error[..., :3]
+
+        rot_err = np.cross(
+            desired_rotvec, thrust_desired/np.norm(thrust_desired, dim=-1, keepdim=True), dim=-1)
+        rpy_rate_target = self.attitude_controller.update(
+            rot_err, self.step_dt)
+
+        return np.cat([thrust.unsqueeze(-1), rpy_rate_target], dim=-1)
 
     def pid_controller(self, info):
         xyz_targets = info['xyz_target']
@@ -357,6 +403,34 @@ class Crazyflie:
             traj_xyz[i] += self.world_center
 
         return traj_xyz, traj_vxyz
+
+
+class PIDController:
+    """PID controller for attitude rate control
+
+    Returns:
+        _type_: _description_
+    """
+
+    def __init__(self, kp, ki, kd, ki_max, integral, last_error):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.ki_max = ki_max
+        self.integral = integral
+        self.last_error = last_error
+        self.reset()
+
+    def reset(self):
+        self.integral *= 0.0
+        self.last_error *= 0.0
+
+    def update(self, error, dt):
+        self.integral += error * dt
+        self.integral = np.clip(self.integral, -self.ki_max, self.ki_max)
+        derivative = (error - self.last_error) / dt
+        self.last_error = error
+        return self.kp * error + self.ki * self.integral + self.kd * derivative
 
 class Logger():
     def __init__(self) -> None:
@@ -456,7 +530,7 @@ def main():
 
     # PPO controller
     # load PPO controller
-    # loaded_agent = torch.load('/home/pcy/Documents/crazyswarm/ros_ws/src/crazyswarm/scripts/results/ppo_track_robust.pt', map_location='cpu')
+    # loaded_agent = np.load('/home/pcy/Documents/crazyswarm/ros_ws/src/crazyswarm/scripts/results/ppo_track_robust.pt', map_location='cpu')
     # policy = loaded_agent['actor']
     # compressor = loaded_agent['compressor']
 
@@ -477,7 +551,7 @@ def main():
         else:
             info['xyz_target'] = target_point
             info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
-        # logger.log(info)
+        logger.log(info)
         action = cfctl.pid_controller(info) * 1.0
         obs, reward, done, info = cfctl.step(action)
 
