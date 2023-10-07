@@ -7,6 +7,7 @@ import rclpy
 from geometry_msgs.msg import PoseStamped
 import matplotlib.pyplot as plt
 import pandas as pd
+from functools import partial
 
 class Crazyflie:
 
@@ -40,7 +41,7 @@ class Crazyflie:
 
         # control parameters
         self.max_vel = 6.0
-        self.rate = 10.0
+        self.rate = 50
         self.xyz_min = np.array([-2.0, -3.0, -2.0])
         self.xyz_max = np.array([2.0, 2.0, 1.5])
         ones = np.ones([self.cf_num, 3])
@@ -83,35 +84,20 @@ class Crazyflie:
 
         # ROS related initialization
         for cf in self.allcfs.crazyflies:
-            func = getattr(self, f'state_callback_{cf.prefix[1:]}')
-            self.allcfs.create_subscription(PoseStamped, f'{cf.prefix}/pose', func, 10)
+            func = partial(self.state_callback_cf, cfid=self.cf_ids[cf.prefix[1:]])
+            self.allcfs.create_subscription(PoseStamped, f'{cf.prefix}/pose', func, self.rate)
 
         # initialize publisher
-        self.pose_pub = self.allcfs.create_publisher(PoseStamped, 'cmd_pose', 10)
-        self.target_pub = self.allcfs.create_publisher(PoseStamped, 'target_pose', 10)
+        self.pose_pub = self.allcfs.create_publisher(PoseStamped, 'cmd_pose', self.rate)
+        self.target_pub = self.allcfs.create_publisher(PoseStamped, 'target_pose', self.rate)
         self.msg = PoseStamped()
         self.msg.header.frame_id = 'world'
 
-    def state_callback(self, data):
+    def state_callback_cf(self, data, cfid):
         pos = data.pose.position
         quat = data.pose.orientation
-        return np.array([pos.x, pos.y, pos.z]), np.array([quat.x, quat.y, quat.z, quat.w])
-
-    def state_callback_cf1(self, data):
-        cfid = self.cf_ids['cf1']
-        self.xyz_drone_kf[cfid], self.quat_drones_kf[cfid] = self.state_callback(data)
-    
-    def state_callback_cf2(self, data):
-        cfid = self.cf_ids['cf2']
-        self.xyz_drone_kf[cfid], self.quat_drones_kf[cfid] = self.state_callback(data)
-    
-    def state_callback_cf3(self, data):
-        cfid = self.cf_ids['cf3']
-        self.xyz_drone_kf[cfid], self.quat_drones_kf[cfid] = self.state_callback(data)
-
-    def state_callback_cf4(self, data):
-        cfid = self.cf_ids['cf4']
-        self.xyz_drone_kf[cfid], self.quat_drones_kf[cfid] = self.state_callback(data)
+        self.xyz_drone_kf[cfid] = np.array([pos.x, pos.y, pos.z])
+        self.quat_drones_kf[cfid] = np.array([quat.x, quat.y, quat.z, quat.w])
 
     def thrust2cmd(self, thrust):
         a, b, c = 2.130295e-11*4.0, 1.032633e-6*4.0, 5.484560e-4*4.0
@@ -429,7 +415,6 @@ class PIDController:
 class Logger():
     def __init__(self) -> None:
         self.xyz_target = []
-        self.rpy_target = []
         self.omega_target = []
         self.vxyz_target = []
         self.xyz_drone = []
@@ -443,7 +428,6 @@ class Logger():
 
     def log(self, obs):
         self.xyz_target.append(obs['xyz_target'])
-        self.rpy_target.append(obs['rpy_target'].copy())
         self.omega_target.append(obs['omega_target'].copy())
         self.vxyz_target.append(obs['vxyz_target'])
         self.xyz_drone.append(obs['xyz_drone'])
@@ -458,7 +442,6 @@ class Logger():
     def plot(self):
         # convert to numpy array
         self.xyz_target = np.array(self.xyz_target)
-        self.rpy_target = np.array(self.rpy_target)
         self.omega_target = np.array(self.omega_target)
         self.xyz_drone_kf = np.array(self.xyz_drone_kf)
         self.rpy_drone_kf = np.array(self.rpy_drone_kf)
@@ -489,7 +472,6 @@ class Logger():
         for i in range(3):
             ax = axs[i, 1]
             for j in range(cf_num):
-                ax.plot(self.rpy_target[:, j, i], label=f'target{j}', linestyle='--')
                 ax.plot(self.rpy_drone[:, j, i], label=f'drone{j}')
                 ax.plot(self.rpy_drone_kf[:, j, i], label=f'drone_kf{j}')
             ax.set_ylabel(title_list[i])
@@ -562,7 +544,7 @@ def main():
         else:
             info['xyz_target'] = target_point
             info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
-        # logger.log(info)
+        logger.log(info)
         # action = cfctl.pid_controller(info) * 1.0
         action = cfctl.policy_att(np.array([[0.0, 0.0, 1.0]]), np.array([0.35]))
         obs, reward, done, info = cfctl.step(action)

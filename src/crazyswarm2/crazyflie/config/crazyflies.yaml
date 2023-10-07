@@ -3,22 +3,7 @@ robots:
   cf1:
     enabled: true
     uri: radio://0/80/2M/E7E7E7E701
-    initial_position: [0, -1, 0]
-    type: cf21  # see robot_types
-  cf2:
-    enabled: false
-    uri: radio://0/80/2M/E7E7E7E702
-    initial_position: [0.5, 0, 0]
-    type: cf21  # see robot_types
-  cf4:
-    enabled: false
-    uri: radio://0/80/2M/E7E7E7E704
     initial_position: [0, 0, 0]
-    type: cf21  # see robot_types
-  cf9:
-    enabled: false
-    uri: radio://0/80/2M/E7E7E7E709
-    initial_position: [-0.32, 0, 0]
     type: cf21  # see robot_types
 # Definition of the various robot types
 robot_types:
