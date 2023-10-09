@@ -108,3 +108,5 @@ build/
 **/*.cmd
 **/*.a
 *.elf
+
+results/
