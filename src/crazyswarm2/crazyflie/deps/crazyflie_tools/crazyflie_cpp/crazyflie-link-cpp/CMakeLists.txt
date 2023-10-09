@@ -27,7 +27,6 @@ endif()
 
 # dependencies
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/build)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
 
 if (WIN32)
   # build libusb
@@ -128,6 +127,14 @@ if (BUILD_CPP_EXAMPLES)
     examples/broadcast.cpp
   )
   target_link_libraries(example_broadcast
+    crazyflieLinkCpp
+  )
+
+  # example_broadcast_and_console
+  add_executable(example_broadcast_and_console
+    examples/broadcast_and_console.cpp
+  )
+  target_link_libraries(example_broadcast_and_console
     crazyflieLinkCpp
   )
 endif()

@@ -11,11 +11,16 @@ def main():
     timeHelper = swarm.timeHelper
     allcfs = swarm.allcfs
 
+    print("start to takeoff...")
     allcfs.takeoff(targetHeight=Z, duration=1.0+Z)
     timeHelper.sleep(1.5+Z)
+    print("takeoff finished")
+
+    print("start to hover...")
     for cf in allcfs.crazyflies:
         pos = np.array(cf.initialPosition) + np.array([0, 0, Z])
         cf.goTo(pos, 0, 1.0)
+    print("hover finished")
 
     print("press button to continue...")
     swarm.input.waitUntilButtonPressed()
