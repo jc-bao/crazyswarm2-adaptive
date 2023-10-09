@@ -34,12 +34,12 @@ def main():
     cf = swarm.allcfs.crazyflies[0]
 
     rate = 30.0
-    Z = 0.5
+    Z = 1.0
 
     cf.takeoff(targetHeight=Z, duration=Z+1.0)
     timeHelper.sleep(Z+2.0)
 
-    executeTrajectory(timeHelper, cf, Path(__file__).parent / "data/figure8.csv", rate, offset=np.array([0, 0, 0.5]))
+    executeTrajectory(timeHelper, cf, Path(__file__).parent / "data/figure8.csv", rate, offset=np.array([0, 0, 1.0]))
 
     cf.notifySetpointsStop()
     cf.land(targetHeight=0.03, duration=Z+1.0)

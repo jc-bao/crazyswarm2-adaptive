@@ -1,3 +1,6 @@
+#include <cinttypes>
+#define __STDC_FORMAT_MACROS
+
 #include <iostream>
 #include <fstream>
 #include <inttypes.h>
