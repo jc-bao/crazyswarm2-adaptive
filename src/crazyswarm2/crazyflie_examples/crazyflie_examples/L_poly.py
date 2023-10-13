@@ -34,24 +34,15 @@ def main():
     cf = swarm.allcfs.crazyflies[0]
 
     rate = 30.0
-    Z = 1.75
+    Z = 1.0
 
     cf.takeoff(targetHeight=Z, duration=Z+1.0)
     timeHelper.sleep(Z+2.0)
 
-    print('go to initial position...')
-    cf.goTo(np.array([0.0, 1.0, Z]), 0.0, 2.0)
-    timeHelper.sleep(2.0)
+    executeTrajectory(timeHelper, cf, Path(__file__).parent / "data/L_poly.csv", rate, offset=np.array([0, 0, 1.0]))
 
-    print('Executing trajectory...')
-    executeTrajectory(timeHelper, cf, "/home/pcy/Research/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/data/figure8.csv", rate, offset=np.array([0, 1.0, 1.0]))
-
-    timeHelper.sleep(2.0)
-    cf.goTo(np.array([0.0, 0.0, 0.5]), 0.0, 2.0)
-    timeHelper.sleep(5.0)
     cf.notifySetpointsStop()
-    
-    cf.land(targetHeight=0.04, duration=Z+1.0)
+    cf.land(targetHeight=0.03, duration=Z+1.0)
     timeHelper.sleep(Z+2.0)
 
 
