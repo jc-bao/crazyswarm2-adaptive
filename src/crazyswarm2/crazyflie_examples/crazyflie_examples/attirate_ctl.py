@@ -128,6 +128,7 @@ class Crazyflie:
         for i, cf in enumerate(self.allcfs.crazyflies):
             omega = omega_target[i]
             acc_z = acc_z_target[i]
+            # print("set_attirate: ", acc_z, omega)
             cf.cmdFullState(
                 np.zeros(3),np.zeros(3),np.array([0,0,acc_z]), 0.0, omega)
     
@@ -338,17 +339,21 @@ class Crazyflie:
             delta_xyz_target = np.clip(xyz_target - xyz_obj, -self.max_vel/self.rate, self.max_vel/self.rate)
             xyz_target = xyz_obj + delta_xyz_target
 
-            obj2drone = xyz_obj - xyz_drone
-            z_hat_obj = obj2drone / np.linalg.norm(obj2drone)
-            force_target_obj =  np.array([0.0, 0.0, self.g * self.obj_mass]) + (xyz_target - xyz_obj) * 0.05 - (vxyz_obj - vxyz_target) * 0.025
-            total_force_obj_projected = np.dot(z_hat_obj, force_target_obj) * z_hat_obj
-            z_hat_obj_target = - force_target_obj / np.linalg.norm(force_target_obj)
-            # z_hat_obj_target = np.array([0.0, 0.0, -1.0])
+            # obj2drone = xyz_obj - xyz_drone
+            # z_hat_obj = obj2drone / np.linalg.norm(obj2drone)
+            # force_target_obj =  np.array([0.0, 0.0, self.g * self.obj_mass]) + (xyz_target - xyz_obj) * 0.05 - (vxyz_obj - vxyz_target) * 0.025
+            # total_force_obj_projected = np.dot(z_hat_obj, force_target_obj) * z_hat_obj
+            # z_hat_obj_target = - force_target_obj / np.linalg.norm(force_target_obj)
+
+            # disable object PID
+            total_force_obj_projected = 0.0
+            z_hat_obj_target = np.array([0.0, 0.0, -1.0])
 
             xyz_drone_target = xyz_target - z_hat_obj_target * self.rope_length
             self.xyz_drone_target[i] = xyz_drone_target
             
-            force_target_drone = np.array([0.0, 0.0, self.g * self.mass]) + total_force_obj_projected + (xyz_drone_target - xyz_drone) * 0.2 * np.array([1.0, 1.0, 1.0]) - (vxyz_drone - vxyz_target) * 0.1 * np.array([1.0, 1.0, 1.0])
+            # force_target_drone = np.array([0.0, 0.0, self.g * self.mass]) + total_force_obj_projected + (xyz_drone_target - xyz_drone) * 0.2 * np.array([1.0, 1.0, 1.0]) - (vxyz_drone - vxyz_target) * 0.1 * np.array([1.0, 1.0, 1.0])
+            force_target_drone = (np.array([0.0, 0.0, self.g]) + (xyz_drone_target - xyz_drone) * 3.0 + (vxyz_target - vxyz_drone) * 3.0) * self.mass + total_force_obj_projected
             rotmat_drone = np.array(tf3d.euler.euler2mat(quat_drone[0], quat_drone[1], quat_drone[2]))
             total_force_drone_projected = (rotmat_drone@force_target_drone)[2]
 
@@ -535,6 +540,7 @@ def main():
     print('take off')
     target_point = cfctl.last_xyz_drone.copy()
     target_point[:, 2] = 1.0
+    # print(info)
     for i in range(int(6.0 * cfctl.rate)):
         if i < int(3.0 * cfctl.rate):
             info['xyz_target'] = target_point + np.array([0.0, 0.0, -1.0 + 0.05*i])
@@ -547,8 +553,10 @@ def main():
             info['xyz_target'] = target_point
             info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
         logger.log(info)
-        # action = cfctl.pid_controller(info) * 1.0
-        action = cfctl.policy_att(np.array([[0.0, 0.0, 1.0]]), np.array([0.35]))
+        action = cfctl.pid_controller(info) * 1.0
+        action = np.array([[0.0, 0.0, 0.0, 0.027 * 9.81 * 1.2]])
+        # print("action:  ", action)
+        # action = cfctl.policy_att(np.array([[0.0, 0.0, 1.0]]), np.array([0.35]))
         obs, reward, done, info = cfctl.step(action)
 
 

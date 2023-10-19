@@ -45,8 +45,10 @@ static float armLength = 0.046f; // m;
 static float thrustToTorque = 0.005964552f;
 
 // thrust = a * pwm^2 + b * pwm
-static float pwmToThrustA = 0.091492681f;
-static float pwmToThrustB = 0.067673604f;
+// static float pwmToThrustA = 0.091492681f;
+// static float pwmToThrustB = 0.067673604f;
+static float pwmToThrustA = 0.11459406f;
+static float pwmToThrustB = 0.02580751f;
 
 int powerDistributionMotorType(uint32_t id)
 {

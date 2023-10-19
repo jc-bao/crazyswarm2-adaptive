@@ -468,6 +468,13 @@ public:
 private:
   void cmd_full_state_changed(const crazyflie_interfaces::msg::FullState::SharedPtr msg)
   {
+    printf("cmd_full_state_changed\n");
+    RCLCPP_INFO(logger_, "[cmd_full_state_changed] x: %f, y: %f, z: %f, vx: %f, vy: %f, vz: %f, ax: %f, ay: %f, az: %f, qx: %f, qy: %f, qz: %f, qw: %f, rollRate: %f, pitchRate: %f, yawRate: %f",
+                msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
+                msg->twist.linear.x, msg->twist.linear.y, msg->twist.linear.z,
+                msg->acc.x, msg->acc.y, msg->acc.z,
+                msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w,
+                msg->twist.angular.x, msg->twist.angular.y, msg->twist.angular.z);
     float x = msg->pose.position.x;
     float y = msg->pose.position.y;
     float z = msg->pose.position.z;
@@ -504,20 +511,23 @@ private:
 
   void cmd_vel_changed(const crazyflie_interfaces::msg::AngVel::SharedPtr msg)
   {
+    printf("cmd_vel_changed\n");
     float roll_rate = msg->roll_rate;
     float pitch_rate = msg->pitch_rate;
     float yaw_rate = msg->yaw_rate;
     int16_t thrust = msg->thrust;
+    RCLCPP_INFO(logger_, "[cmd_vel_changed] roll: %f, pitch: %f, yaw: %f, thrust: %u", roll_rate, pitch_rate, yaw_rate, (unsigned int)thrust);
     cf_.sendPositionSetpoint(roll_rate, pitch_rate, yaw_rate, thrust);
   }
 
   void cmd_vel_legacy_changed(const geometry_msgs::msg::Twist::SharedPtr msg)
   {
+    printf("cmd_vel_legacy_changed\n");
     float roll = msg->linear.y;
     float pitch = -(msg->linear.x);
     float yawrate = msg->angular.z;
     uint16_t thrust = std::min<uint16_t>(std::max<float>(msg->linear.z, 0.0), 60000);
-    // RCLCPP_INFO(logger_, "roll: %f, pitch: %f, yaw: %f, thrust: %u", roll, pitch, yawrate, (unsigned int)thrust);
+    RCLCPP_INFO(logger_, "[cmd_vel_legacy_changed], roll: %f, pitch: %f, yaw: %f, thrust: %u", roll, pitch, yawrate, (unsigned int)thrust);
     cf_.sendSetpoint(roll, pitch, yawrate, thrust);
   }
 
@@ -1182,6 +1192,7 @@ int main(int argc, char *argv[])
 
   // rclcpp::spin(std::make_shared<CrazyflieServer>());
   auto node = std::make_shared<CrazyflieServer>();
+  RCLCPP_INFO(node->get_logger(), "Crazyflie server [cpp] started");
   while (true)
   {
     node->spin_some();

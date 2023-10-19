@@ -294,7 +294,7 @@ static void stabilizerTask(void* param)
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
 
       controller(&control, &setpoint, &sensorData, &state, tick);
-
+      
       checkEmergencyStopTimeout();
 
       //

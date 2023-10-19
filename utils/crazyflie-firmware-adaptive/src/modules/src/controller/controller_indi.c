@@ -25,6 +25,7 @@
 
 #include "controller_indi.h"
 #include "math3d.h"
+#include "debug.h"
 
 static float thrust_threshold = 300.0f;
 static float bound_control_input = 32000.0f;
@@ -121,6 +122,7 @@ void controllerINDIInit(void)
 	 * Can this also be called during flight, for instance when switching controllers?
 	 * Then the filters should not be reset to zero but to the current values of sensors and actuators.
 	 */
+    DEBUG_PRINT("controllerINDIInit\n");
 	float_rates_zero(&indi.angular_accel_ref);
 	float_rates_zero(&indi.u_act_dyn);
 	float_rates_zero(&indi.u_in);
@@ -147,7 +149,8 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
 	const state_t *state,
 	const uint32_t tick)
 {
-	control->controlMode = controlModeLegacy;
+	DEBUG_PRINT("controllerINDI\n");
+    control->controlMode = controlModeLegacy;
 
 	//The z_distance decoder adds a negative sign to the yaw command, the position decoder doesn't
 	if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {

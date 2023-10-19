@@ -8,6 +8,7 @@
 #include "log.h"
 #include "param.h"
 #include "math3d.h"
+#include "debug.h"
 
 #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
 
@@ -26,6 +27,7 @@ static float accelz;
 
 void controllerPidInit(void)
 {
+  DEBUG_PRINT("controllerPidInit\n");
   attitudeControllerInit(ATTITUDE_UPDATE_DT);
   positionControllerInit();
 }
@@ -58,6 +60,7 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
                                          const state_t *state,
                                          const uint32_t tick)
 {
+  DEBUG_PRINT("controllerPid\n");
   control->controlMode = controlModeLegacy;
 
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {

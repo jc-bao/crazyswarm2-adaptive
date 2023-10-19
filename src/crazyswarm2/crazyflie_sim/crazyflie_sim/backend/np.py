@@ -54,7 +54,7 @@ class Quadrotor:
 
     def __init__(self, state):
         # parameters (Crazyflie 2.0 quadrotor)
-        self.mass = 0.034 # kg
+        self.mass = 0.027 # kg
         # self.J = np.array([
         # 	[16.56,0.83,0.71],
         # 	[0.83,16.66,1.8],
@@ -102,6 +102,7 @@ class Quadrotor:
         # dot{p} = v 
         pos_next = self.state.pos + self.state.vel * dt
         # mv = mg + R f_u 
+        # print('set acc_z sim', rowan.rotate(self.state.quat,f_u) / self.mass)
         vel_next = self.state.vel + (np.array([0,0,-self.g]) + rowan.rotate(self.state.quat,f_u) / self.mass) * dt
 
         # dot{R} = R S(w)

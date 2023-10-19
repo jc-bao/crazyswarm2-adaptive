@@ -38,6 +38,7 @@
 #include "num.h"
 #include "math3d.h"
 #include "physicalConstants.h"
+#include "debug.h"
 
 static struct mat33 CRAZYFLIE_INERTIA =
     {{{16.6e-6f, 0.83e-6f, 0.72e-6f},
@@ -82,6 +83,7 @@ static float heuristic_yaw = 5;
 static bool isInit = false;
 
 void controllerBrescianiniInit(void) {
+  DEBUG_PRINT("controllerBrescianiniInit\n");
   if (isInit) {
     return;
   }
@@ -103,6 +105,7 @@ void controllerBrescianini(control_t *control,
   static struct vec control_torque;
   static float control_thrust;
 
+//   DEBUG_PRINT("controllerBrescianini\n");
 
   // define this here, since we do body-rate control at 1000Hz below the following if statement
   float omega[3] = {0};

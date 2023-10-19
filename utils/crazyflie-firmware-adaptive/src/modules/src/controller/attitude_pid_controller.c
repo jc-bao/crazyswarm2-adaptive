@@ -33,6 +33,7 @@
 #include "log.h"
 #include "commander.h"
 #include "platform_defaults.h"
+#include "debug.h"
 
 
 static bool attFiltEnable = ATTITUDE_LPF_ENABLE;
@@ -104,6 +105,7 @@ static bool isInit;
 
 void attitudeControllerInit(const float updateDt)
 {
+  DEBUG_PRINT("attitudeControllerInit\n");
   if(isInit)
     return;
 
@@ -142,6 +144,7 @@ void attitudeControllerCorrectRatePID(
        float rollRateActual, float pitchRateActual, float yawRateActual,
        float rollRateDesired, float pitchRateDesired, float yawRateDesired)
 {
+  DEBUG_PRINT("attitudeControllerCorrectRatePID\n");
   pidSetDesired(&pidRollRate, rollRateDesired);
   rollOutput = saturateSignedInt16(pidUpdate(&pidRollRate, rollRateActual, true));
 
@@ -158,6 +161,7 @@ void attitudeControllerCorrectAttitudePID(
        float eulerRollDesired, float eulerPitchDesired, float eulerYawDesired,
        float* rollRateDesired, float* pitchRateDesired, float* yawRateDesired)
 {
+  DEBUG_PRINT("attitudeControllerCorrectAttitudePID\n");
   pidSetDesired(&pidRoll, eulerRollDesired);
   *rollRateDesired = pidUpdate(&pidRoll, eulerRollActual, true);
 

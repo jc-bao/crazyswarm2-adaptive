@@ -146,7 +146,7 @@ class CrazyflieServer(Node):
         # update setpoint
         states_desired = [cf.getSetpoint() for _, cf in self.cfs.items()]
 
-        # execute the control loop
+        # execute the control loop (acc_z, torque -> rpm)
         actions = [cf.executeController()  for _, cf in self.cfs.items()]
 
         # execute the physics simulator
@@ -312,6 +312,7 @@ def main(args=None):
 
     rclpy.init(args=args)
     crazyflie_server = CrazyflieServer()
+    crazyflie_server.get_logger().info("Crazyflie server [python] started")
     rclpy.get_default_context().on_shutdown(crazyflie_server.on_shutdown_callback)
 
     try:
