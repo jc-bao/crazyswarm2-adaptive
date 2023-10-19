@@ -554,7 +554,7 @@ def main():
             info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
         logger.log(info)
         action = cfctl.pid_controller(info) * 1.0
-        action = np.array([[0.0, 0.0, 0.0, 0.027 * 9.81 * 1.2]])
+        # action = np.array([[0.0, 0.0, 0.0, 0.027 * 9.81 * 1.2]])
         # print("action:  ", action)
         # action = cfctl.policy_att(np.array([[0.0, 0.0, 1.0]]), np.array([0.35]))
         obs, reward, done, info = cfctl.step(action)
