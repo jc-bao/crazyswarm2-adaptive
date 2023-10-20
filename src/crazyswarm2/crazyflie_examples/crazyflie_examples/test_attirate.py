@@ -48,37 +48,27 @@ class Crazyflie:
         self.xyz_max = np.array([2.0, 2.0, 1.5])
         ones = np.ones([self.cf_num, 3])
         zeros = np.zeros([self.cf_num, 3])
-        self.pos_controller = PIDController(
-            kp=ones*16.0,
-            ki=ones*0.0,
-            kd=ones*6.0,
-            ki_max=ones*100.0,
-            integral=zeros,
-            last_error=zeros
-        )
-        self.attitude_controller = PIDController(
-            kp=ones*20.0,
-            ki=ones*0.0,
-            kd=ones*0.0,
-            ki_max=ones*100.0,
-            integral=zeros,
-            last_error=zeros
-        )
+        
+        self.pos_pid_param = PIDParam(m=self.mass, g=self.g, max_thrust=0.6, max_omega=np.array([1.0, 1.0, 1.0])*0.1, Kp=np.array([1.0, 1.0, 1.0])*2.0, Kd=np.array([1.0, 1.0, 1.0])*2.0, Kp_att=np.array([1.0, 1.0, 1.0])*0.05)
+        
+        self.pos_pid = PIDController(self.pos_pid_param)
 
         # initialize parameters
         self.step_cnt = 0
         self.xyz_drone_kf = np.zeros([self.cf_num, 3])
-        self.quat_drones_kf = np.zeros([self.cf_num, 4])
+        self.xyz_drone_tf = np.zeros([self.cf_num, 3])
+        self.quat_drones_kf = np.array(self.cf_num*[[0.0, 0.0, 0.0, 1.0]])
+        self.quat_drones_tf = np.array(self.cf_num*[[0.0, 0.0, 0.0, 1.0]])
         self.traj_xyz = np.zeros((self.cf_num, int(self.command_timelimit*self.rate), 3))
         self.traj_vxyz = np.zeros((self.cf_num, int(self.command_timelimit*self.rate), 3))
         self.xyz_drone = np.zeros([self.cf_num, 3])
         self.xyz_drone_target = np.zeros([self.cf_num, 3])
         self.vxyz_drone = np.zeros([self.cf_num ,3])
         self.last_xyz_drone = np.zeros([self.cf_num, 3])
-        self.quat_drones = np.zeros([self.cf_num, 4])
+        self.quat_drones = np.array(self.cf_num*[[0.0, 0.0, 0.0, 1.0]])
         self.omega_drone = np.zeros([self.cf_num, 3])
-        self.last_quat_drone = np.zeros([self.cf_num, 4])
-        self.quat_target = np.zeros([self.cf_num, 4])
+        self.last_quat_drone = np.array(self.cf_num*[[0.0, 0.0, 0.0, 1.0]])
+        self.quat_target = np.array(self.cf_num*[[0.0, 0.0, 0.0, 1.0]])
         self.omega_target = np.zeros([self.cf_num, 3])
         self.last_xyz_obj = np.zeros(3)
         self.xyz_obj = np.array([0.0, 0.0, -self.rope_length])
@@ -100,6 +90,7 @@ class Crazyflie:
         quat = data.pose.orientation
         self.xyz_drone_kf[cfid] = np.array([pos.x, pos.y, pos.z])
         self.quat_drones_kf[cfid] = np.array([quat.x, quat.y, quat.z, quat.w])
+        # print("state_callback_cf: ", self.xyz_drone_kf[cfid], self.quat_drones_kf[cfid])
 
     def thrust2cmd(self, thrust):
         a, b, c = 2.130295e-11*4.0, 1.032633e-6*4.0, 5.484560e-4*4.0
@@ -107,11 +98,16 @@ class Crazyflie:
 
     def get_drone_state(self):
         xyz_drone = []
+        quat_drone = []
         for name in self.cf_names:
             trans_mocap = self.tf_buffer.lookup_transform('world', name, rclpy.time.Time())
             pos = trans_mocap.transform.translation
+            quat = trans_mocap.transform.rotation
             xyz_drone.append(np.array([pos.x, pos.y, pos.z]))
-        return np.array(xyz_drone), self.quat_drones_kf
+            quat_drone.append(np.array([quat.x, quat.y, quat.z, quat.w]))
+        self.xyz_drone_tf = np.array(xyz_drone)
+        self.quat_drones_tf = np.array(quat_drone)
+        return self.xyz_drone_tf, self.quat_drones_tf # self.quat_drones_kf
 
     def get_obj_state(self):
         if self.obj_mass < 1e-4:
@@ -261,9 +257,9 @@ class Crazyflie:
         # publish observation
         # self._pub_obs()
 
-        if np.any(self.xyz_drone > (self.xyz_max + self.world_center)) or np.any(self.xyz_drone < (self.xyz_min + self.world_center)):
-            print(f'{self.xyz_drone} is out of bound')
-            self.emergency(next_obs)
+        # if np.any(self.xyz_drone > (self.xyz_max + self.world_center)) or np.any(self.xyz_drone < (self.xyz_min + self.world_center)):
+        #     print(f'{self.xyz_drone} is out of bound')
+        #     self.emergency(next_obs)
 
         # reward
         self.step_cnt += 1
@@ -291,71 +287,21 @@ class Crazyflie:
         for cf in self.allcfs.crazyflies:
             cf.emergency()
         raise ValueError
-
-    def policy_att(self, target_vec, thrust):
-        desired_rotvec = np.zeros([self.cf_num, 3])
-        desired_rotvec[:, 2] = 1.0
-
-        rot_err = np.cross(
-            desired_rotvec, target_vec/np.linalg.norm(target_vec, axis=-1, keepdims=True), axis=-1)
-        omega_target = self.attitude_controller.update(rot_err, 1/self.rate)
-        
-        return np.concatenate([thrust[..., np.newaxis], omega_target], axis=-1)
-
-    
-    def policy_pos(self, pos_target):
-        # Drone-level controller
-        xyz_drone_target = pos_target 
-        delta_pos_drones = xyz_drone_target - self.xyz_drone
-        target_force_drone = self.mass*self.pos_controller.update(
-            delta_pos_drones, 1/self.rate) - (self.mass) * np.array([0.0, 0.0, -self.g])
-        rotmat_drone = quat2rotmat(self.quat_drones)
-        thrust_desired = (
-            np.linalg.inv(rotmat_drone)@target_force_drone[..., np.newaxis])[..., 0]
-        thrust = np.linalg.norm(thrust_desired, axis=-1)
-
-        return self.policy_att(thrust_desired, thrust)
-
-    def pid_calc(self, pos, quat, vel, omega, pos_tar, vel_tar, acc_tar):
-        # position control
-        Q = geom.qtoQ(quat)
-        f_d = self.param.m * (np.array([0.0, 0.0, self.param.g]) - control_params.Kp * (
-            state.pos - state.pos_tar) - control_params.Kd * (state.vel - state.vel_tar) - control_params.d_hat + state.acc_tar)
-        thrust = (Q.T @ f_d)[2]
-        thrust = np.clip(thrust, 0.0, self.param.max_thrust)
-
-        # attitude control
-        z_d = f_d / np.linalg.norm(f_d)
-        axis_angle = np.cross(np.array([0.0, 0.0, 1.0]), z_d)
-        angle = np.linalg.norm(axis_angle)
-        # when the rotation axis is zero, set it to [0.0, 0.0, 1.0] and set angle to 0.0
-        small_angle = (np.abs(angle) < 1e-4)
-        axis = np.where(small_angle, np.array(
-            [0.0, 0.0, 1.0]), axis_angle / angle)
-        R_d = geom.axisangletoR(axis, angle)
-        R_e = R_d.T @ Q
-        angle_err = geom.vee(R_e - R_e.T)
-        # generate desired angular velocity
-        omega_d = - control_params.Kp_att * angle_err
-
-        # generate action
-        action = np.concatenate([np.array(
-            [(thrust/self.param.max_thrust) * 2.0 - 1.0]), (omega_d/self.param.max_omega)])
-
-        return action
     
     def pid_controller(self, info):
         xyz_targets = info['xyz_target']
         vxyz_targets = info['vxyz_target']
         xyz_drones = info['xyz_drone']
         vxyz_drones = info['vxyz_drone']
-        quat_drones = info['quat_drone']    
+        quat_drones = info['quat_drone']   # [x, y, z, w]
         omega_drones = info['omega_drone']
         # quat_drones = (quat_drones + np.pi) % (2*np.pi) - np.pi
         xyz_obj = info['xyz_obj']
         vxyz_obj = info['vxyz_obj']
 
         actions = []
+
+        # print("rpy:", ", ".join(f"{value:.3f}" for value in tf3d.euler.quat2euler((quat_drones[0,3], quat_drones[0,0], quat_drones[0,1], quat_drones[0,2]))))
 
         for i in range(self.cf_num):
             xyz_target = xyz_targets[i]
@@ -365,35 +311,12 @@ class Crazyflie:
             quat_drone = quat_drones[i]
             omega_drone = omega_drones[i]
 
-            delta_xyz_target = np.clip(xyz_target - xyz_obj, -self.max_vel/self.rate, self.max_vel/self.rate)
-            xyz_target = xyz_obj + delta_xyz_target
-
-            # obj2drone = xyz_obj - xyz_drone
-            # z_hat_obj = obj2drone / np.linalg.norm(obj2drone)
-            # force_target_obj =  np.array([0.0, 0.0, self.g * self.obj_mass]) + (xyz_target - xyz_obj) * 0.05 - (vxyz_obj - vxyz_target) * 0.025
-            # total_force_obj_projected = np.dot(z_hat_obj, force_target_obj) * z_hat_obj
-            # z_hat_obj_target = - force_target_obj / np.linalg.norm(force_target_obj)
-
-            # disable object PID
-            total_force_obj_projected = 0.0
-            z_hat_obj_target = np.array([0.0, 0.0, -1.0])
-
-            xyz_drone_target = xyz_target - z_hat_obj_target * self.rope_length
-            self.xyz_drone_target[i] = xyz_drone_target
+            state = PIDState(pos=xyz_drone, vel=vxyz_drone, quat=quat_drone, omega=omega_drone)
+            target = PIDState(pos=xyz_target, vel=vxyz_target)
             
-            # force_target_drone = np.array([0.0, 0.0, self.g * self.mass]) + total_force_obj_projected + (xyz_drone_target - xyz_drone) * 0.2 * np.array([1.0, 1.0, 1.0]) - (vxyz_drone - vxyz_target) * 0.1 * np.array([1.0, 1.0, 1.0])
-            force_target_drone = (np.array([0.0, 0.0, self.g]) + (xyz_drone_target - xyz_drone) * 3.0 + (vxyz_target - vxyz_drone) * 3.0) * self.mass + total_force_obj_projected
-            rotmat_drone = np.array(tf3d.euler.euler2mat(quat_drone[0], quat_drone[1], quat_drone[2]))
-            total_force_drone_projected = (rotmat_drone@force_target_drone)[2]
-
-            thrust_pid = np.clip(total_force_drone_projected, 0.0, 0.6)
-            ctl_roll_pid = np.clip(np.arctan2(-force_target_drone[1], np.sqrt(force_target_drone[0]**2 + force_target_drone[2]**2)), -np.pi/6, np.pi/6)
-            ctl_roll_rate_pid = (ctl_roll_pid - quat_drone[0]) * 4.0 - omega_drone[0] * 0.05
-            ctl_pitch_pid = np.clip(np.arctan2(force_target_drone[0], force_target_drone[2]), -np.pi/6, np.pi/6)
-            ctl_pitch_rate_pid = (ctl_pitch_pid - quat_drone[1]) * 4.0 - omega_drone[1] * 0.05
-            ctl_yaw_rate_pid =  + (quat_drone[2]) * 6.0 + omega_drone[2] * 0.00
+            thrust, roll_rate, pitch_rate, yaw_rate = self.pos_pid(state, target)
         
-            act = np.array([ctl_roll_rate_pid, ctl_pitch_rate_pid, ctl_yaw_rate_pid, thrust_pid])
+            act = np.array([roll_rate, pitch_rate, yaw_rate, thrust])
             actions.append(act)
 
         return np.array(actions)
@@ -419,33 +342,6 @@ class Crazyflie:
 
         return traj_xyz, traj_vxyz
 
-
-class PIDController:
-    """PID controller for attitude rate control
-
-    Returns:
-        _type_: _description_
-    """
-
-    def __init__(self, kp, ki, kd, ki_max, integral, last_error):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.ki_max = ki_max
-        self.integral = integral
-        self.last_error = last_error
-        self.reset()
-
-    def reset(self):
-        self.integral *= 0.0
-        self.last_error *= 0.0
-
-    def update(self, error, dt):
-        self.integral += error * dt
-        self.integral = np.clip(self.integral, -self.ki_max, self.ki_max)
-        derivative = (error - self.last_error) / dt
-        self.last_error = error
-        return self.kp * error + self.ki * self.integral + self.kd * derivative
 
 class Logger():
     def __init__(self) -> None:
@@ -531,7 +427,7 @@ class Logger():
         # plt.show()
         print('mocap drift fix value: ', -self.quat_drone.mean(axis=0))
         # get current file path
-        plt.savefig('/home/pcy/Research/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/results/attirate.png')
+        plt.savefig('attirate.png')
 
 def quat2rotmat(quat):
     # convert quaternion to rotation matrix with torch
@@ -570,9 +466,11 @@ def main():
     target_point = cfctl.last_xyz_drone.copy()
     target_point[:, 2] = 1.0
     # print(info)
-    for i in range(int(6.0 * cfctl.rate)):
+    N = int(1.0 * cfctl.rate)
+    print(N)
+    for i in range(N):
         if i < int(3.0 * cfctl.rate):
-            info['xyz_target'] = target_point + np.array([0.0, 0.0, -1.0 + 0.05*i])
+            info['xyz_target'] = i/N * target_point + (1.0-i/N) * np.array([0.0, 0.0, 0.0])
             info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
             info['vxyz_target'][:,2] = 0.05
             info['xyz_obj'] = info['xyz_drone'][0].copy()
@@ -582,6 +480,8 @@ def main():
             info['xyz_target'] = target_point
             info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
         logger.log(info)
+        # print(info['xyz_target'])
+        # print(info['quat_drone'])
         action = cfctl.pid_controller(info) * 1.0
         # action = np.array([[0.0, 0.0, 0.0, 0.027 * 9.81 * 1.2]])
         # print("action:  ", action)
@@ -591,7 +491,7 @@ def main():
 
     target_point = cfctl.traj_xyz[:,0]
     print('go to initial point', target_point)
-    for _ in range(int(4.0 * 10.0 * cfctl.rate)):
+    for _ in range(int(2.0 * cfctl.rate)):
         info['xyz_target'] = target_point
         info['vxyz_target'] = np.zeros([cfctl.cf_num, 3])
         logger.log(info)
@@ -600,16 +500,9 @@ def main():
 
     print('main task')
     obs, info = cfctl.soft_reset()
-    for _ in range(int(12.0 * cfctl.rate)):
+    for _ in range(int(6.0 * cfctl.rate)):
         # PID controller
         action = cfctl.pid_controller(info) * 1.0
-        logger.log(info)
-        obs, reward, done, info = cfctl.step(action)
-
-    for _ in range(int(1.0 * cfctl.rate)):
-        quat = info['quat_drone'][0]
-        xyz = info['xyz_drone'][0]
-        action[0] = np.array([0.1, -quat[1]*4.0, quat[2]*6.0, 0.27 + (1.3 - xyz[2]) * 0.2])
         logger.log(info)
         obs, reward, done, info = cfctl.step(action)
 
@@ -623,13 +516,6 @@ def main():
         # logger.log(info)
         obs, reward, done, info = cfctl.step(action)
 
-    for _ in range(int(1.0 * cfctl.rate)):
-        quat = info['quat_drone'][0]
-        xyz = info['xyz_drone'][0]
-        action[0] = np.array([0.1, -quat[1]*4.0, quat[2]*6.0, 0.27 + (1.3 - xyz[2]) * 0.2])
-        logger.log(info)
-        obs, reward, done, info = cfctl.step(action)
-
     print('landing...')
     target_point = cfctl.last_xyz_drone.copy()
     target_point[:, 2] = 0.05
@@ -640,6 +526,11 @@ def main():
         action = cfctl.pid_controller(info)*1.0
 
         obs, reward, done, info = cfctl.step(action)
+
+
+    # stop
+    obs, reward, done, info = cfctl.step(np.array([[0.0, 0.0, 0.0, 0.0]]))
+
 
     logger.plot()
 
