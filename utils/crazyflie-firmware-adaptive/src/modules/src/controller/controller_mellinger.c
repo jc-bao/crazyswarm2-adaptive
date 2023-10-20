@@ -46,10 +46,15 @@ We added the following:
 #include "debug.h"
 
 
+#define UPDATE_RATE RATE_100_HZ
+
 static struct mat33 CRAZYFLIE_INERTIA =
     {{{16.6e-6f, 0.83e-6f, 0.72e-6f},
       {0.83e-6f, 16.6e-6f, 1.8e-6f},
       {0.72e-6f, 1.8e-6f, 29.3e-6f}}};
+
+static struct vec OMEGA_GAIN = {1.0f, 1.0f, 1.0f};
+
 
 // minimum and maximum body rates
 static float omega_rp_max = 30;
@@ -148,7 +153,7 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
   omega[0] = radians(sensors->gyro.x);
   omega[1] = radians(sensors->gyro.y);
   omega[2] = radians(sensors->gyro.z);
-  if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
+  if (RATE_DO_EXECUTE(RATE_100_HZ, tick)) {
     // desired accelerations
     // struct vec accDes = vzero();
     // desired thrust
@@ -435,6 +440,8 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
                         (control_omega[2] - omega[2])/tau_yaw_rate);
 
     // update the commanded body torques based on the current error in body rates
+    omegaErr = veltmul(omegaErr, OMEGA_GAIN);
+
     control_torque = mvmul(CRAZYFLIE_INERTIA, omegaErr);
 
     control->thrustSi = control_thrust * CF_MASS; // force to provide control_thrust
