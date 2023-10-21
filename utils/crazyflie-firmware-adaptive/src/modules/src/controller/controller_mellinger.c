@@ -153,7 +153,7 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
   omega[0] = radians(sensors->gyro.x);
   omega[1] = radians(sensors->gyro.y);
   omega[2] = radians(sensors->gyro.z);
-  if (RATE_DO_EXECUTE(RATE_100_HZ, tick)) {
+  if (RATE_DO_EXECUTE(RATE_500_HZ, tick)) {
     // desired accelerations
     // struct vec accDes = vzero();
     // desired thrust
