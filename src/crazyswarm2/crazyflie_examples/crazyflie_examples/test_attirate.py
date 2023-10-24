@@ -2,12 +2,13 @@ from crazyflie_py import Crazyswarm
 import numpy as np
 import tf2_ros
 import rclpy
-from geometry_msgs.msg import PoseStamped, TransformStamped, Pose
+from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, Transform
 from tf2_geometry_msgs import do_transform_pose
 from .pid_controller import PIDController, PIDParam, PIDState
 from nav_msgs.msg import Path
 from std_msgs.msg import Header
 from .util import np2point, np2quat, np2vec3, line_traj
+from rosbag2_py import SequentialWriter
 
 class Crazyflie:
 
@@ -33,7 +34,16 @@ class Crazyflie:
         
         # check if simulation
         self.is_sim = self.allcfs.get_parameter("use_sim_time").get_parameter_value().bool_value
-        
+        # check if bag_path is set
+        bag_path_param = self.allcfs.declare_parameter('bag_path', '')
+        self.bag_path = bag_path_param.get_parameter_value().string_value
+        if not self.bag_path:
+            self.allcfs.get_logger().warn("bag_path is not set, bag will not be recorded, set bag_path to record bag")
+        # check if no action output
+        no_action_param = self.allcfs.declare_parameter('no_action', False)
+        self.no_action = no_action_param.get_parameter_value().bool_value
+        if self.no_action:
+            self.allcfs.get_logger().warn("no_action is set to True, no action will be output")
 
         # control parameters
         self.max_vel = 6.0
@@ -41,7 +51,13 @@ class Crazyflie:
         self.xyz_min = np.array([-2.0, -3.0, -2.0])
         self.xyz_max = np.array([2.0, 2.0, 1.5])
         
-        self.pos_pid_param = PIDParam(m=self.mass, g=self.g, max_thrust=0.6, max_omega=np.array([1.0, 1.0, 1.0])*0.1, Kp=np.array([1.0, 1.0, 1.0])*2.0, Kd=np.array([1.0, 1.0, 1.0])*2.0, Kp_att=np.array([1.0, 1.0, 1.0])*0.05)
+        self.pos_pid_param = PIDParam(
+            m=self.mass, 
+            g=self.g, max_thrust=0.6, 
+            max_omega=np.array([1.0, 1.0, 1.0])*0.1, 
+            Kp=np.array([1.0, 1.0, 1.0])*2.0, 
+            Kd=np.array([1.0, 1.0, 1.0])*2.0, 
+            Kp_att=np.array([1.0, 1.0, 1.0])*0.05)
         
         self.pos_pid = PIDController(self.pos_pid_param)
 
@@ -49,8 +65,16 @@ class Crazyflie:
         self.step_cnt = 0
         
         self.traj = Path()
-        self.drone_state = PIDState(pos=np.zeros(3), vel=np.zeros(3), quat=np.array([0.0, 0.0, 0.0, 1.0]), omega=np.zeros(3))
-        self.drone_target = PIDState(pos=np.zeros(3), vel=np.zeros(3), quat=np.array([0.0, 0.0, 0.0, 1.0]), omega=np.zeros(3))
+        self.drone_state = PIDState(
+            pos=np.zeros(3), 
+            vel=np.zeros(3), 
+            quat=np.array([0.0, 0.0, 0.0, 1.0]), 
+            omega=np.zeros(3))
+        self.drone_target = PIDState(
+            pos=np.zeros(3), 
+            vel=np.zeros(3), 
+            quat=np.array([0.0, 0.0, 0.0, 1.0]),
+            omega=np.zeros(3))
 
         # ROS related initialization
         self.allcfs.create_subscription(PoseStamped, f'{self.cf.prefix}/pose', self.state_callback_cf, self.rate)
@@ -64,19 +88,19 @@ class Crazyflie:
         self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.allcfs)
         self.tf_publisher = tf2_ros.TransformBroadcaster(node=self.allcfs)
         self.static_tf_publisher = tf2_ros.StaticTransformBroadcaster(node=self.allcfs)
-        static_transformStamped = TransformStamped()
-        static_transformStamped.header.stamp = rclpy.time.Time().to_msg()
-        static_transformStamped.header.frame_id = "world"
-        static_transformStamped.child_frame_id = "map"
-        static_transformStamped.transform.translation = np2vec3(self.world_center)
-        static_transformStamped.transform.rotation = np2quat(np.array([0.0, 0.0, 0.0, 1.0]))
+        static_transformStamped = TransformStamped(
+            header=Header(frame_id="world"), 
+            child_frame_id="map", 
+            transform=Transform(translation=np2vec3(self.world_center), 
+                                rotation=np2quat(np.array([0.0, 0.0, 0.0, 1.0]))))
         self.static_tf_publisher.sendTransform(static_transformStamped)        
         
         if self.is_sim:
-            static_transformStamped.header.frame_id = f"{self.cf_name}"
-            static_transformStamped.child_frame_id = f"{self.cf_name}/kf"
-            static_transformStamped.transform.translation = np2vec3(np.array([0.0, 0.0, 0.0]))
-            static_transformStamped.transform.rotation = np2quat(np.array([0.0, 0.0, 0.0, 1.0]))
+            static_transformStamped = TransformStamped(
+                header=Header(frame_id=f"{self.cf_name}"), 
+                child_frame_id=f"{self.cf_name}/kf", 
+                transform=Transform(translation=np2vec3(np.array([0.0, 0.0, 0.0])), 
+                                    rotation=np2quat(np.array([0.0, 0.0, 0.0, 1.0]))))
             self.static_tf_publisher.sendTransform(static_transformStamped)
             
             
@@ -160,7 +184,11 @@ class Crazyflie:
         target_yaw_rate = action[2]
         omega_target = np.array([target_roll_rate, target_pitch_rate, target_yaw_rate])
         thrust_target = action[3]
-        self.set_attirate(omega_target, thrust_target)
+        
+        if self.no_action:
+            self.set_attirate(np.zeros(3), 0.0)
+        else:    
+            self.set_attirate(omega_target, thrust_target)
         self.timeHelper.sleepForRate(self.rate)
         
         # observation
@@ -182,8 +210,14 @@ class Crazyflie:
         current_point = self.drone_state.pos.copy()
         target_point = current_point.copy()
         target_point[2] = 0.0
-        current_point = PoseStamped(header=Header(frame_id="world"), pose=Pose(position=np2point(current_point), orientation=np2quat(self.drone_state.quat)))
-        target_point = PoseStamped(header=Header(frame_id="world"), pose=Pose(position=np2point(target_point), orientation=np2quat(self.drone_state.quat)))
+        current_point = PoseStamped(
+            header=Header(frame_id="world"), 
+            pose=Pose(position=np2point(current_point), 
+                      orientation=np2quat(self.drone_state.quat)))
+        target_point = PoseStamped(
+            header=Header(frame_id="world"), 
+            pose=Pose(position=np2point(target_point), 
+                      orientation=np2quat(self.drone_state.quat)))
         transform = self.tf_buffer.lookup_transform("map", "world", rclpy.time.Time())
         current_point = do_transform_pose(current_point.pose, transform).position
         target_point = do_transform_pose(target_point.pose, transform).position
