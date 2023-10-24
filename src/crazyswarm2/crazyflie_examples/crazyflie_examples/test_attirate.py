@@ -295,13 +295,11 @@ class Crazyflie:
             traj.poses.append(pose)
 
 
-
         # takeoff trajectory
         target_point = self.xyz_drone_tf.copy()
         target_point[2] = 1.0
         current_point = self.xyz_drone_tf.copy()
         takeoff_traj_poses = line_traj(current_point, target_point, 2.0).poses + line_traj(target_point, traj_xyz[0], 2.0).poses
-
 
         # landing trajectory
         target_point = self.xyz_drone_tf.copy()

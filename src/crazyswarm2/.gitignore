@@ -3,3 +3,5 @@ crazyswarm2_sim_webots/
 *.pyc
 *.o
 *~
+/bags/
+*.csv
