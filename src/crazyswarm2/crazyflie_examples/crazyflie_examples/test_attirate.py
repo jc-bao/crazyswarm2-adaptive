@@ -1,15 +1,12 @@
 from crazyflie_py import Crazyswarm
 import numpy as np
-from icecream import ic
 import tf2_ros
 import rclpy
-from geometry_msgs.msg import PoseStamped, TransformStamped
-import matplotlib.pyplot as plt
-import pandas as pd
-from functools import partial
-import os
+from geometry_msgs.msg import PoseStamped, TransformStamped, Pose
+from tf2_geometry_msgs import do_transform_pose
 from .pid_controller import PIDController, PIDParam, PIDState
 from nav_msgs.msg import Path
+from std_msgs.msg import Header
 from .util import np2point, np2quat, np2vec3, line_traj
 
 class Crazyflie:
@@ -37,21 +34,6 @@ class Crazyflie:
         # check if simulation
         self.is_sim = self.allcfs.get_parameter("use_sim_time").get_parameter_value().bool_value
         
-        # initialize tf
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.allcfs)
-        self.tf_publisher = tf2_ros.TransformBroadcaster(node=self.allcfs)
-        
-        if self.is_sim:
-            self.static_tf_publisher = tf2_ros.StaticTransformBroadcaster(node=self.allcfs)
-            static_transformStamped = TransformStamped()
-            static_transformStamped.header.stamp = rclpy.time.Time().to_msg()
-            static_transformStamped.header.frame_id = f"{self.cf_name}"
-            static_transformStamped.child_frame_id = f"{self.cf_name}/kf"
-            static_transformStamped.transform.translation = np2vec3(np.array([0.0, 0.0, 0.0]))
-            static_transformStamped.transform.rotation = np2quat(np.array([0.0, 0.0, 0.0, 1.0]))
-            self.static_tf_publisher.sendTransform(static_transformStamped)
-        
 
         # control parameters
         self.max_vel = 6.0
@@ -65,8 +47,6 @@ class Crazyflie:
 
         # initialize parameters
         self.step_cnt = 0
-        self.xyz_drone_tf = np.zeros(3)
-        self.quat_drones_tf = np.array([0.0, 0.0, 0.0, 1.0])
         
         self.traj = Path()
         self.drone_state = PIDState(pos=np.zeros(3), vel=np.zeros(3), quat=np.array([0.0, 0.0, 0.0, 1.0]), omega=np.zeros(3))
@@ -78,9 +58,28 @@ class Crazyflie:
         # initialize publisher
         self.target_pub = self.allcfs.create_publisher(PoseStamped, 'target_pose', self.rate)
         self.traj_pub = self.allcfs.create_publisher(Path, 'traj', self.rate)
-
-        self.msg = PoseStamped()
-        self.msg.header.frame_id = 'world'
+        
+        # initialize tf
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.allcfs)
+        self.tf_publisher = tf2_ros.TransformBroadcaster(node=self.allcfs)
+        self.static_tf_publisher = tf2_ros.StaticTransformBroadcaster(node=self.allcfs)
+        static_transformStamped = TransformStamped()
+        static_transformStamped.header.stamp = rclpy.time.Time().to_msg()
+        static_transformStamped.header.frame_id = "world"
+        static_transformStamped.child_frame_id = "map"
+        static_transformStamped.transform.translation = np2vec3(self.world_center)
+        static_transformStamped.transform.rotation = np2quat(np.array([0.0, 0.0, 0.0, 1.0]))
+        self.static_tf_publisher.sendTransform(static_transformStamped)        
+        
+        if self.is_sim:
+            static_transformStamped.header.frame_id = f"{self.cf_name}"
+            static_transformStamped.child_frame_id = f"{self.cf_name}/kf"
+            static_transformStamped.transform.translation = np2vec3(np.array([0.0, 0.0, 0.0]))
+            static_transformStamped.transform.rotation = np2quat(np.array([0.0, 0.0, 0.0, 1.0]))
+            self.static_tf_publisher.sendTransform(static_transformStamped)
+            
+            
 
     def state_callback_cf(self, data):
         msg = TransformStamped()
@@ -109,9 +108,12 @@ class Crazyflie:
     def get_drone_target(self, omega_target:np.ndarray):
         # update target
         try:
-            pos = self.traj.poses[self.step_cnt].pose.position
+            pos_in_map = self.traj.poses[self.step_cnt]
         except:
-            pos = self.traj.poses[-1].pose.position
+            pos_in_map = self.traj.poses[-1]
+        
+        transform = self.tf_buffer.lookup_transform("world", "map", rclpy.time.Time())
+        pos = do_transform_pose(pos_in_map.pose, transform).position
         
         pos = np.array([pos.x, pos.y, pos.z], dtype=np.float32)
         # calculate velocity using finite difference, change to differential flatness later
@@ -120,11 +122,7 @@ class Crazyflie:
         self.drone_target.pos = pos
         self.drone_target.quat = np.array([0.0, 0.0, 0.0, 1.0])
         
-        msg = PoseStamped()
-        msg.header.frame_id = 'world'
-        msg.pose.position = np2point(self.drone_target.pos)
-        msg.pose.orientation = np2quat(self.drone_target.quat)
-        self.target_pub.publish(msg)
+        self.target_pub.publish(pos_in_map)
        
 
     def set_attirate(self, omega_target:np.ndarray, thrust_target:float):
@@ -148,7 +146,6 @@ class Crazyflie:
     def soft_reset(self):
         self.step_cnt = 0
         self.traj = self._generate_traj()
-        self.traj.header.frame_id = "world"
         self.traj.header.stamp = rclpy.time.Time().to_msg()
         self.traj_pub.publish(self.traj)
 
@@ -168,7 +165,6 @@ class Crazyflie:
         
         # observation
         self.get_drone_state()
-        
         self.get_drone_target(omega_target)
         
 
@@ -181,23 +177,28 @@ class Crazyflie:
 
     def emergency(self, obs):
         # stop
-        # for _ in range(int(2.0*self.rate)):
-        #     obs['xyz_target'] = self.last_xyz_drone.copy()
-        #     obs['xyz_target'][2] = 0.5
-        #     obs['vxyz_target'] = np.zeros(3)
-        #     action = self.pid_controller(info)
-        #     obs, reward, done, info = self.step(action)
-        # move to origin
-        # for _ in range(int(4.0*self.rate)):
-        #     obs['xyz_target'] = self.world_center.copy()
-        #     obs['xyz_target'][2] = 0.2
-        #     obs['vxyz_target'] = np.zeros(3)
-        #     action = self.pid_controller(info)
-        #     obs, reward, done, info = self.step(action)
-        self.reset()
-        for cf in self.allcfs.crazyflies:
-            cf.emergency()
-        raise ValueError
+        
+        self.traj.clear()
+        current_point = self.drone_state.pos.copy()
+        target_point = current_point.copy()
+        target_point[2] = 0.0
+        current_point = PoseStamped(header=Header(frame_id="world"), pose=Pose(position=np2point(current_point), orientation=np2quat(self.drone_state.quat)))
+        target_point = PoseStamped(header=Header(frame_id="world"), pose=Pose(position=np2point(target_point), orientation=np2quat(self.drone_state.quat)))
+        transform = self.tf_buffer.lookup_transform("map", "world", rclpy.time.Time())
+        current_point = do_transform_pose(current_point.pose, transform).position
+        target_point = do_transform_pose(target_point.pose, transform).position
+        landing_traj_poses = line_traj(self.rate, current_point, target_point, 3.0).poses
+        self.traj.poses = landing_traj_poses
+        self.traj.header.stamp = rclpy.time.Time().to_msg()
+        self.traj_pub.publish(self.traj)
+        
+        print('emergency, landing...')
+
+        return        
+        # self.reset()
+        # for cf in self.allcfs.crazyflies:
+        #     cf.emergency()
+        # raise ValueError
     
     def pid_controller(self):
         thrust, roll_rate, pitch_rate, yaw_rate = self.pos_pid(self.drone_state, self.drone_target)
@@ -208,7 +209,8 @@ class Crazyflie:
 
         #generate trajectory
         traj = Path()
-        traj.header.frame_id = "world"
+        traj.header.frame_id = "map"
+        
         base_w = 2 * np.pi / 4.0
         t = np.arange(0, int(5.0*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
@@ -219,26 +221,25 @@ class Crazyflie:
         phase = np.array([np.pi/2,0.0,np.pi])
         traj_xyz = A * np.sin(t*w+phase)
         traj_vxyz = w * A * np.cos(t*w+phase)
-        traj_xyz += self.world_center
+
 
         for j in range(traj_xyz.shape[0]):
             pose = PoseStamped()
-            pose.header.frame_id = "world"
+            pose.header.frame_id = "map"
             pose.pose.position = np2point(traj_xyz[j])
             traj.poses.append(pose)
 
-
+        current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}/kf", rclpy.time.Time()).transform.translation
+        current_point = np.array([current_point.x, current_point.y, current_point.z])
 
         # takeoff trajectory
-        target_point = self.xyz_drone_tf.copy()
-        target_point[2] = 1.0
-        current_point = self.xyz_drone_tf.copy()
-        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 2.0).poses + line_traj(target_point, traj_xyz[0], 2.0).poses
+        target_point = current_point.copy()
+        target_point[2] += 1.0
+        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 2.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 2.0).poses
 
 
         # landing trajectory
-        target_point = self.xyz_drone_tf.copy()
-        target_point[2] = 0.0
+        target_point = current_point.copy()
         current_point = traj_xyz[-1].copy()
         landing_traj_poses = line_traj(self.rate, current_point, target_point, 3.0).poses
 
@@ -259,8 +260,6 @@ def main():
     print('take off')
     while cfctl.step_cnt < len(cfctl.traj.poses):
     # while cfctl.step_cnt < 10:
-        # PID controller
-        # print(info)
         action = cfctl.pid_controller() * 1.0
         cfctl.step(action)
 
