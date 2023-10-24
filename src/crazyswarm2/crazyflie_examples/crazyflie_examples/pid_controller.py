@@ -5,6 +5,7 @@ import transforms3d as tf3d
 import rclpy
 from geometry_msgs.msg import Vector3Stamped, Vector3
 from std_msgs.msg import Header
+from .util import np2vec3
 
 
 @dataclass
@@ -74,32 +75,21 @@ class PIDController(rclpy.node.Node):
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.vector = Vector3()
         angle_desire = tf3d.euler.mat2euler(R_d)
-        msg.vector.x = angle_desire[0]
-        msg.vector.y = angle_desire[1]
-        msg.vector.z = angle_desire[2]
+        msg.vector = np2vec3(angle_desire)
         self.attitude_desire_pub.publish(msg)
         
         angle = tf3d.euler.mat2euler(Q)
-        msg.vector.x = angle[0]
-        msg.vector.y = angle[1]
-        msg.vector.z = angle[2]
+        msg.vector = np2vec3(angle)
         self.attitude_pub.publish(msg)
         
-        msg.vector.x = angle_err[0]
-        msg.vector.y = angle_err[1]
-        msg.vector.z = angle_err[2]
+        msg.vector = np2vec3(angle_err)
         self.angle_err_pub.publish(msg)
         
-        msg.vector.x = omega_d[0]
-        msg.vector.y = omega_d[1]
-        msg.vector.z = omega_d[2]
+        msg.vector = np2vec3(omega_d)
         self.omega_d_pub.publish(msg)
 
-        msg.vector.x = state.omega[0]
-        msg.vector.y = state.omega[1]
-        msg.vector.z = state.omega[2]
+        msg.vector = np2vec3(state.omega)
         self.omega_pub.publish(msg)
 
-        # print("state.pos", state.pos, "target.pos", target.pos, "state.vel", state.vel, "target.vel", target.vel, "f_d", f_d, "thrust", thrust, "angle_err", angle_err, "omega_d", omega_d, "quat", state.quat)
         # generate action
         return np.concatenate([np.array([thrust]), omega_d])
