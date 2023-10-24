@@ -271,7 +271,6 @@ class Crazyflie:
         target_point[2] += 1.0
         takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 2.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 2.0).poses
 
-
         # landing trajectory
         target_point = current_point.copy()
         current_point = traj_xyz[-1].copy()
