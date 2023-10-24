@@ -43,13 +43,6 @@ class Crazyflie:
         self.xyz_min = jnp.array([-2.0, -3.0, -2.0])
         self.xyz_max = jnp.array([2.0, 2.0, 1.5])
 
-        # crazyswarm related initialization
-        self.swarm = Crazyswarm()
-        self.timeHelper = self.swarm.timeHelper
-        self.cf = self.swarm.allcfs.crazyflies[0]
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.swarm.allcfs)
-
         # base controller: PID
         self.base_controller, self.base_control_params = get_controller(self.env, 'pid', None)
         self.default_control_params = deepcopy(self.base_control_params)
@@ -62,18 +55,26 @@ class Crazyflie:
         self.quat_kf = jnp.array([0.0, 0.0, 0.0, 1.0])
         self.pos_hist = jnp.zeros((self.env.default_params.adapt_horizon+3, 3), dtype=jnp.float32)
         self.quat_hist = jnp.zeros((self.env.default_params.adapt_horizon+3, 4), dtype=jnp.float32)
-        func = partial(self.state_callback_cf, cfid=1)
-        self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', func, int(1/self.env_params.dt))
-        # state publisher
-        # initialize publisher
+        self.action_hist = jnp.zeros((self.env.default_params.adapt_horizon+2, 4), dtype=jnp.float32)
+
+        # crazyswarm related initialization
+        self.swarm = Crazyswarm()
+        self.timeHelper = self.swarm.timeHelper
+        self.cf = self.swarm.allcfs.crazyflies[0]
+        # publisher
         rate = int(1.0 / self.env_params.dt)
         self.world_center_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'world_center', rate)
         self.pos_sim_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_sim', rate)
         self.pos_real_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_real', rate)
         self.pos_tar_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_tar', rate)
         self.traj_pub = self.swarm.allcfs.create_publisher(Path, 'traj', rate)
+        # listener
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.swarm.allcfs)
+        self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', self.state_callback_cf, rate)
 
-    def state_callback_cf(self, data, cfid):
+
+    def state_callback_cf(self, data):
         pos = data.pose.position
         quat = data.pose.orientation
         self.pos_kf = np.array([pos.x, pos.y, pos.z])
@@ -122,7 +123,7 @@ class Crazyflie:
             # trajectory information for adaptation
             vel_hist = vel_hist, 
             omega_hist = omega_hist,
-            action_hist = self.state_real.action_hist,
+            action_hist = self.action_hist,
             # control parameters
             control_params = self.control_params,
         )
@@ -131,11 +132,13 @@ class Crazyflie:
         trans_mocap = self.tf_buffer.lookup_transform('world', 'cf1', rclpy.time.Time())
         pos = trans_mocap.transform.translation
         quat = trans_mocap.transform.rotation
+        # get timestamp
+        print('mocap time', trans_mocap.header.stamp)
         return jnp.array([pos.x, pos.y, pos.z]) - self.world_center, jnp.array([quat.x, quat.y, quat.z, quat.w])
 
     def set_attirate(self, omega_target, thrust_target):
         # convert to degree
-        omega_target = np.array(omega_target, dtype=np.float64) / np.pi * 180.0 # NOTE: make sure the type is float64
+        omega_target = np.array(omega_target, dtype=np.float64) # NOTE: make sure the type is float64
         acc_z_target = thrust_target / self.env.default_params.m
         self.cf.cmdFullState(
             np.zeros(3),np.zeros(3),np.array([0,0,acc_z_target]), 0.0, omega_target)
@@ -176,9 +179,9 @@ class Crazyflie:
     
     def reset(self):
         # NOTE use this to estabilish connection
-        for _ in range(2):
+        for _ in range(10):
             self.set_attirate(np.zeros(3), 0.0)
-            self.timeHelper.sleepForRate(10.0)
+            self.timeHelper.sleepForRate(50.0)
         reset_rng, self.rng = jax.random.split(self.rng)
         # reset controller
         self.base_control_params = self.default_control_params
@@ -186,8 +189,8 @@ class Crazyflie:
         # fly to initial point
         next_state_dict = self.goto(self.state_real.pos_tar, timelimit=3.0)
         self.state_real = self.get_real_state()
-        # reset simulator
-        # obs_sim, info_sim, self.state_sim = self.env.reset(reset_rng, self.env_params)
+        # publish trajectory
+        self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
         return next_state_dict
     
     def step(self, action: jnp.ndarray, action_sim = None):
@@ -204,8 +207,11 @@ class Crazyflie:
         self.timeHelper.sleepForRate(1.0/self.env.default_params.dt)
         # update real-world state
         pos, quat = self.get_drone_state()
+        # DEBUG: use kf state
+        pos, quat = self.pos_kf, self.quat_kf
         self.pos_hist = jnp.concatenate([self.pos_hist[1:], pos.reshape(1,3)], axis=0)
         self.quat_hist = jnp.concatenate([self.quat_hist[1:], quat.reshape(1,4)], axis=0)
+        self.action_hist = jnp.concatenate([self.action_hist[1:], action.reshape(1,4)], axis=0)
         self.state_real = self.get_real_state()
         obs_real = self.env.get_obs(self.state_real, self.env_params)
         reward_real = self.env.reward_fn(self.state_real, self.env_params)
@@ -252,7 +258,6 @@ class Crazyflie:
         self.pos_sim_pub.publish(self.get_pose_msg(self.state_sim.pos, self.state_sim.quat))
         self.pos_real_pub.publish(self.get_pose_msg(self.state_real.pos, self.state_real.quat))
         self.pos_tar_pub.publish(self.get_pose_msg(self.state_real.pos_tar, np.array([0.0, 0.0, 0.0, 1,0])))
-        self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
 
     def emergency(self, obs):
         self.cf.emergency()

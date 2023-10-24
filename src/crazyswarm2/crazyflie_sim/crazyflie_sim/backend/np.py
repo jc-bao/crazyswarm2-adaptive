@@ -102,7 +102,6 @@ class Quadrotor:
         # dot{p} = v 
         pos_next = self.state.pos + self.state.vel * dt
         # mv = mg + R f_u 
-        # print('set acc_z sim', rowan.rotate(self.state.quat,f_u) / self.mass)
         vel_next = self.state.vel + (np.array([0,0,-self.g]) + rowan.rotate(self.state.quat,f_u) / self.mass) * dt
 
         # dot{R} = R S(w)
