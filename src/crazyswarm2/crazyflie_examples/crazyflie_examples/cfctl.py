@@ -160,8 +160,13 @@ class Crazyflie:
                 vel_tar_real = (pos_end - pos_start_real) / timelimit
                 pos_tar_sim = pos_start_sim + (pos_end - pos_start_sim) * i / N_move
                 vel_tar_sim = (pos_end - pos_start_sim) / timelimit
+            if self.state_real.pos[2] < (-self.world_center[2]+0.1):
+                pos_tar_real = jnp.array([0.0, 0.0, -self.world_center[2]+0.15])
+                vel_tar_real = jnp.zeros(3)
             state_real_replaced = self.state_real.replace(pos_tar=pos_tar_real, vel_tar=vel_tar_real, acc_tar = jnp.zeros(3))
             action, _, _ = self.base_controller(None, state_real_replaced, self.env_params, None, self.base_control_params, None)
+            # thrust = 0.027*(9.81+1.0)
+            # action = jnp.array([thrust/0.8*2.0-1.0, 0.01/10.0, 0.0, 0.0]) 
             state_sim_replaced = self.state_sim.replace(pos_tar=pos_tar_sim, vel_tar=vel_tar_sim, acc_tar = jnp.zeros(3))
             action_sim, _, _ = self.controller(None, state_sim_replaced, self.env_params, None, self.control_params, None)
             next_state_dict = self.step(action, action_sim)

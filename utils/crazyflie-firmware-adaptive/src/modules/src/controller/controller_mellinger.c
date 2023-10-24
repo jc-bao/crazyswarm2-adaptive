@@ -46,7 +46,7 @@ We added the following:
 #include "debug.h"
 
 
-#define UPDATE_RATE RATE_100_HZ
+#define UPDATE_RATE RATE_500_HZ
 
 static struct mat33 CRAZYFLIE_INERTIA =
     {{{16.6e-6f, 0.83e-6f, 0.72e-6f},
