@@ -11,7 +11,6 @@ import pandas as pd
 from functools import partial
 import os
 import pickle
-from .pid_controller import PIDController, PIDParam, PIDState
 from copy import deepcopy
 
 import jax
@@ -133,7 +132,6 @@ class Crazyflie:
         pos = trans_mocap.transform.translation
         quat = trans_mocap.transform.rotation
         # get timestamp
-        print('mocap time', trans_mocap.header.stamp)
         return jnp.array([pos.x, pos.y, pos.z]) - self.world_center, jnp.array([quat.x, quat.y, quat.z, quat.w])
 
     def set_attirate(self, omega_target, thrust_target):
@@ -208,7 +206,7 @@ class Crazyflie:
         # update real-world state
         pos, quat = self.get_drone_state()
         # DEBUG: use kf state
-        pos, quat = self.pos_kf, self.quat_kf
+        # pos, quat = self.pos_kf, self.quat_kf
         self.pos_hist = jnp.concatenate([self.pos_hist[1:], pos.reshape(1,3)], axis=0)
         self.quat_hist = jnp.concatenate([self.quat_hist[1:], quat.reshape(1,4)], axis=0)
         self.action_hist = jnp.concatenate([self.action_hist[1:], action.reshape(1,4)], axis=0)
@@ -243,6 +241,7 @@ class Crazyflie:
     def get_path_msg(self, pos_traj):
         path_msg = Path()
         path_msg.header.frame_id = 'world'
+        path_msg.header.stamp = rclpy.time.Time().to_msg()
         for pos in pos_traj:
             pose_msg = PoseStamped()
             pose_msg.header.frame_id = 'world'
@@ -265,14 +264,13 @@ class Crazyflie:
         raise ValueError
     
 def main(repeat_times = 1, filename = ''):
-    env = Crazyflie(task='hovering', controller_name='pid')
+    env = Crazyflie(task='tracking', controller_name='pid')
 
     print('reset...')
     next_state_dict = env.reset()
     obs_real, state_real, reward_real, done_real, info_real = next_state_dict['real']
     obs_sim, state_sim, reward_sim, done_sim, info_sim = next_state_dict['sim']
 
-    '''
     print('main task...')
     rng = jax.random.PRNGKey(1)
     state_real_seq, obs_real_seq, reward_real_seq = [], [], []
@@ -285,6 +283,7 @@ def main(repeat_times = 1, filename = ''):
 
         rng, rng_act = jax.random.split(rng)
         action, env.control_params, control_info = env.controller(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real)
+        action_sim, _, _ = env.controller(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim)
 
         # manually record certain control parameters into state_seq
         control_params = env.control_params
@@ -294,11 +293,12 @@ def main(repeat_times = 1, filename = ''):
             control_seq.append({'a_hat': control_params.a_hat})
         if hasattr(control_params, 'quat_desired'):
             control_seq.append({'quat_desired': control_params.quat_desired})
-        next_state_dict = env.step(action)
+        next_state_dict = env.step(action, action_sim)
         obs_real, state_real, reward_real, done_real, info_real = next_state_dict['real']
         obs_sim, state_sim, reward_sim, done_sim, info_sim = next_state_dict['sim']
 
-        if done_real:
+        # DEBUG: should be done sim
+        if done_sim:
             control_params = env.controller.update_params(env.env_params, control_params)
             n_dones += 1
 
@@ -325,7 +325,6 @@ def main(repeat_times = 1, filename = ''):
         pickle.dump(state_sim_seq_dict, f)
     utils.plot_states(state_real_seq_dict, obs_real_seq, reward_real_seq, env.env_params, 'real'+filename)
     utils.plot_states(state_sim_seq_dict, obs_sim_seq, reward_sim_seq, env.env_params, 'sim'+filename)
-    '''
 
     rclpy.shutdown()
 
