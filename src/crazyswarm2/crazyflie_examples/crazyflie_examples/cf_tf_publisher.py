@@ -12,12 +12,12 @@ class RobotPosePublisher(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.pose_pub = self.create_publisher(PoseStamped, '/cf_tf', 10)
-        self.timer = self.create_timer(0.01, self.publish_robot_pose)
+        self.timer = self.create_timer(0.001, self.publish_robot_pose)
 
     def publish_robot_pose(self):
         try:
             # Get the transformation from the world frame to the robot frame
-            trans = self.tf_buffer.lookup_transform('world', 'cf2', rclpy.time.Time())
+            trans = self.tf_buffer.lookup_transform('world', 'cf1', rclpy.time.Time())
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             return
 

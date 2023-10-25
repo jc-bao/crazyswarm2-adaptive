@@ -12,6 +12,7 @@ from functools import partial
 import os
 import pickle
 from copy import deepcopy
+import time
 
 import jax
 import chex
@@ -24,16 +25,25 @@ from quadjax import controllers
 from quadjax.dynamics import utils
 from quadjax.dynamics.dataclass import EnvParams3D, EnvState3D, Action3D
 
+
 class Crazyflie:
 
     def __init__(self, task = 'tracking', controller_name = 'pid', controller_params = None) -> None:
         # create jax environment for reference
         self.env = Quad3D(task=task, dynamics='bodyrate', obs_type='quad', lower_controller='base', enable_randomizer=False, disturb_type='none')
+        self.step_jit = jax.jit(self.env.step)
+        self.reset_jit = jax.jit(self.env.reset)
+        self.get_obs_jit = jax.jit(self.env.get_obs)
+        self.get_info_jit = jax.jit(self.env.get_info)
+        self.get_reward_jit = jax.jit(self.env.reward_fn)
+        self.is_terminal_jit = jax.jit(self.env.is_terminal)
+        self.sample_params_jit = jax.jit(self.env.sample_params)
+
         self.rng = jax.random.PRNGKey(0)
         rng_params, self.rng = jax.random.split(self.rng)
-        self.env_params = self.env.sample_params(rng_params)
+        self.env_params = self.sample_params_jit(rng_params)
         rng_state, self.rng = jax.random.split(self.rng)
-        obs, info, self.state_sim = self.env.reset(rng_state)
+        obs, info, self.state_sim = self.reset_jit(rng_state)
         # deep copy flax.struct.dataclass 
         self.state_real = deepcopy(self.state_sim)
 
@@ -44,12 +54,16 @@ class Crazyflie:
 
         # base controller: PID
         self.base_controller, self.base_control_params = get_controller(self.env, 'pid', None)
-        self.default_control_params = deepcopy(self.base_control_params)
+        self.default_base_control_params = deepcopy(self.base_control_params)
+        self.base_controller_jit = jax.jit(self.base_controller)
         # controller to test out
         self.controller, self.control_params = get_controller(self.env, controller_name, controller_params)
         self.default_control_params = deepcopy(self.control_params)
+        self.controller_jit = jax.jit(self.controller)
 
         # ROS related initialization
+        self.pos = jnp.zeros(3)
+        self.quat = jnp.array([0.0, 0.0, 0.0, 1.0])
         self.pos_kf = jnp.zeros(3)
         self.quat_kf = jnp.array([0.0, 0.0, 0.0, 1.0])
         self.pos_hist = jnp.zeros((self.env.default_params.adapt_horizon+3, 3), dtype=jnp.float32)
@@ -66,12 +80,17 @@ class Crazyflie:
         self.pos_sim_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_sim', rate)
         self.pos_real_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_real', rate)
         self.pos_tar_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_tar', rate)
-        self.traj_pub = self.swarm.allcfs.create_publisher(Path, 'traj', rate)
+        self.traj_pub = self.swarm.allcfs.create_publisher(Path, 'traj', 1)
         # listener
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.swarm.allcfs)
-        self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', self.state_callback_cf, rate)
+        # self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', self.state_callback_cf, rate)
 
+    # def state_callback_cf_tf(self, data):
+    #     pos = data.pose.position
+    #     quat = data.pose.orientation
+    #     self.pos = np.array([pos.x, pos.y, pos.z])
+    #     self.quat = np.array([quat.x, quat.y, quat.z, quat.w])
 
     def state_callback_cf(self, data):
         pos = data.pose.position
@@ -165,12 +184,13 @@ class Crazyflie:
                 pos_tar_real = jnp.array([0.0, 0.0, -self.world_center[2]+0.15])
                 vel_tar_real = jnp.zeros(3)
             state_real_replaced = self.state_real.replace(pos_tar=pos_tar_real, vel_tar=vel_tar_real, acc_tar = jnp.zeros(3))
-            action, _, _ = self.base_controller(None, state_real_replaced, self.env_params, None, self.base_control_params, None)
-            # thrust = 0.027*(9.81+1.0)
-            # action = jnp.array([thrust/0.8*2.0-1.0, 0.01/10.0, 0.0, 0.0]) 
+            action, _, _ = jax.block_until_ready(self.base_controller_jit(None, state_real_replaced, self.env_params, None, self.base_control_params, None))
+
             state_sim_replaced = self.state_sim.replace(pos_tar=pos_tar_sim, vel_tar=vel_tar_sim, acc_tar = jnp.zeros(3))
-            action_sim, _, _ = self.controller(None, state_sim_replaced, self.env_params, None, self.control_params, None)
+            action_sim, _, _ = jax.block_until_ready(self.base_controller_jit(None, state_sim_replaced, self.env_params, None, self.base_control_params, None))
+
             next_state_dict = self.step(action, action_sim)
+
             self.state_real = self.state_real.replace(time=0)
             self.state_sim = self.state_sim.replace(time=0)
         return next_state_dict
@@ -179,44 +199,58 @@ class Crazyflie:
         # NOTE use this to estabilish connection
         for _ in range(10):
             self.set_attirate(np.zeros(3), 0.0)
-            self.timeHelper.sleepForRate(50.0)
+            rclpy.spin_once(self.swarm.allcfs, timeout_sec=0)
+
         reset_rng, self.rng = jax.random.split(self.rng)
         # reset controller
-        self.base_control_params = self.default_control_params
+        self.base_control_params = self.default_base_control_params
         self.control_params = self.default_control_params
         # fly to initial point
         next_state_dict = self.goto(self.state_real.pos_tar, timelimit=3.0)
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
+
         return next_state_dict
     
     def step(self, action: jnp.ndarray, action_sim = None):
+        time_star = time.time()
         if action_sim is None:
             action_sim = action
         rng_step, self.rng = jax.random.split(self.rng)
+
         # step simulator state
-        obs_sim, self.state_sim, reward_sim, done_sim, info_sim = self.env.step(rng_step, self.state_sim, action_sim, self.env_params) 
+        t0 = time.time()
+        obs_sim, self.state_sim, reward_sim, done_sim, info_sim = jax.block_until_ready(self.step_jit(rng_step, self.state_sim, action_sim, self.env_params)) 
+        print("simulator step time cost: ", (time.time() - t0)*1000, "ms")
         
         # step real-world state
         thrust_tar = (action[0]+1.0)/2.0*self.env.default_params.max_thrust
         omega_tar = action[1:4] * self.env.default_params.max_omega
         self.set_attirate(omega_tar, thrust_tar)
-        self.timeHelper.sleepForRate(1.0/self.env.default_params.dt)
+
+        # wait for next time step
+        dt = self.env.default_params.dt
+        next_time = (int((self.timeHelper.time())/ dt) + 1) * dt
+        while (self.timeHelper.time() <= next_time):
+            rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
+
         # update real-world state
         pos, quat = self.get_drone_state()
-        # DEBUG: use kf state
-        # pos, quat = self.pos_kf, self.quat_kf
         self.pos_hist = jnp.concatenate([self.pos_hist[1:], pos.reshape(1,3)], axis=0)
         self.quat_hist = jnp.concatenate([self.quat_hist[1:], quat.reshape(1,4)], axis=0)
         self.action_hist = jnp.concatenate([self.action_hist[1:], action.reshape(1,4)], axis=0)
         self.state_real = self.get_real_state()
-        obs_real = self.env.get_obs(self.state_real, self.env_params)
-        reward_real = self.env.reward_fn(self.state_real, self.env_params)
-        done_real = self.env.is_terminal(self.state_real, self.env_params)
-        info_real = self.env.get_info(self.state_real, self.env_params)
+        obs_real = self.get_obs_jit(self.state_real, self.env_params)
+        reward_real = self.get_reward_jit(self.state_real, self.env_params)
+        done_real = self.is_terminal_jit(self.state_real, self.env_params)
+        info_real = self.get_info_jit(self.state_real, self.env_params)
 
         self.pub_state()
+
+        time_end = time.time()
+        running_freq = 1.0 / (time_end - time_star)
+        print(f"running frequency: {running_freq:.2f} Hz", "time cost: ", time_end - time_star, "s")
 
         return {
             'real': [obs_real, self.state_real, reward_real, done_real, info_real],
@@ -264,7 +298,8 @@ class Crazyflie:
         raise ValueError
     
 def main(repeat_times = 1, filename = ''):
-    env = Crazyflie(task='tracking', controller_name='pid')
+
+    env = Crazyflie(task='tracking_zigzag', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
 
     print('reset...')
     next_state_dict = env.reset()
@@ -282,8 +317,8 @@ def main(repeat_times = 1, filename = ''):
         state_sim_seq.append(state_sim)
 
         rng, rng_act = jax.random.split(rng)
-        action, env.control_params, control_info = env.controller(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real)
-        action_sim, _, _ = env.controller(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim)
+        action, env.control_params, control_info = jax.block_until_ready(env.controller_jit(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real))
+        action_sim, _, _ = jax.block_until_ready(env.controller_jit(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim))
 
         # manually record certain control parameters into state_seq
         control_params = env.control_params

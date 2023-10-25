@@ -9,6 +9,7 @@ from nav_msgs.msg import Path
 from std_msgs.msg import Header
 from .util import np2point, np2quat, np2vec3, line_traj
 from rosbag2_py import SequentialWriter
+import time
 
 class Crazyflie:
 
@@ -82,6 +83,7 @@ class Crazyflie:
         # initialize publisher
         self.target_pub = self.allcfs.create_publisher(PoseStamped, 'target_pose', self.rate)
         self.traj_pub = self.allcfs.create_publisher(Path, 'traj', self.rate)
+        self.pos_real_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_real', self.rate)
         
         # initialize tf
         self.tf_buffer = tf2_ros.Buffer()
@@ -128,6 +130,11 @@ class Crazyflie:
         self.drone_state.omega = 2 * quat_deriv[:-1] / (np.linalg.norm(self.drone_state.quat[:-1], axis=-1, keepdims=True)+1e-3)
         self.drone_state.pos = pos
         self.drone_state.quat = quat
+
+        self.pos_real_pub.publish(PoseStamped(
+            header=Header(frame_id="world"),
+            pose=Pose(position=np2point(self.drone_state.pos),
+                        orientation=np2quat(self.drone_state.quat))))
     
     def get_drone_target(self, omega_target:np.ndarray):
         # update target
@@ -189,6 +196,7 @@ class Crazyflie:
             self.set_attirate(np.zeros(3), 0.0)
         else:    
             self.set_attirate(omega_target, thrust_target)
+        # time.sleep(0.1)
         self.timeHelper.sleepForRate(self.rate)
         
         # observation
