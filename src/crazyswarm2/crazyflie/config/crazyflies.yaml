@@ -17,21 +17,10 @@ robot_types:
     battery:
       voltage_warning: 3.8  # V
       voltage_critical: 3.7 # V
-    # firmware_params:
-    #   pid_rate:
-    #     roll_kp: 750 # default 250
-    #     roll_ki: 50 # default 500
-    #     roll_kd: 7.5 # default 2.5
-    #     pitch_kp: 750 # default 250
-    #     pitch_ki: 50 # default 500
-    #     pitch_kd: 7.5 # default 2.5
-    #     yaw_kp: 200.0 # default 20.0
-    #     yaw_ki: 167 # default 16.7
-    #     yaw_kd: 0.0 # default 0.0
-    #   flightmode:
-    #     stabModeRoll: 0
-    #     stabModePitch: 0
-    #     stabModeYaw: 0
+    firmware_params:
+      ctrlMel:
+        kR_xy: 100
+        kR_z: 30
 
 # global settings for all robots
 all:
@@ -42,6 +31,8 @@ all:
     default_topics:
      # remove to disable default topic
       pose:
+        frequency: 50 # Hz
+      odom:
         frequency: 50 # Hz
     #custom_topics:
     #  topic_name1:

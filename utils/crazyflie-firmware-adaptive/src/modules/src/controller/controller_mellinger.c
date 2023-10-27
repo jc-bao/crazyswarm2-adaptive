@@ -66,6 +66,7 @@ static float heuristic_yaw = 5;
 static float tau_rp_rate = 0.015;
 static float tau_yaw_rate = 0.0075;
 
+static float dt = 0.002;
 
 // Global state variable used in the
 // firmware as the only instance and in bindings
@@ -87,13 +88,13 @@ static controllerMellinger_t g_self = {
   .i_range_z  = 0.4,
 
   // Attitude
-  .kR_xy = 70000, // P
+  .kR_xy = 30, // P
   .kw_xy = 20000, // D
   .ki_m_xy = 0.0, // I
   .i_range_m_xy = 1.0,
 
   // Yaw
-  .kR_z = 60000, // P
+  .kR_z = 10, // P
   .kw_z = 12000, // D
   .ki_m_z = 500, // I
   .i_range_m_z  = 1500,
@@ -403,27 +404,27 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
     // control_omega[2] = 2.0f / tau_rp * attError.z + radians(setpoint->attitudeRate.yaw); // due to the mixing, this will behave with time constant tau_yaw
 
     // apply the rotation heuristic
-    if (control_omega[0] * omega[0] < 0 && fabsf(omega[0]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
-      control_omega[0] = omega_rp_max * (omega[0] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
-    }
+    // if (control_omega[0] * omega[0] < 0 && fabsf(omega[0]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
+    //   control_omega[0] = omega_rp_max * (omega[0] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
+    // }
 
-    if (control_omega[1] * omega[1] < 0 && fabsf(omega[1]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
-      control_omega[1] = omega_rp_max * (omega[1] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
-    }
+    // if (control_omega[1] * omega[1] < 0 && fabsf(omega[1]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
+    //   control_omega[1] = omega_rp_max * (omega[1] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
+    // }
 
-    if (control_omega[2] * omega[2] < 0 && fabsf(omega[2]) > heuristic_yaw) { // desired rotational rate in direction opposite to current rotational rate
-      control_omega[2] = omega_rp_max * (omega[2] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
-    }
+    // if (control_omega[2] * omega[2] < 0 && fabsf(omega[2]) > heuristic_yaw) { // desired rotational rate in direction opposite to current rotational rate
+    //   control_omega[2] = omega_rp_max * (omega[2] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
+    // }
 
-    // scale the commands to satisfy rate constraints
-    float scaling = 1;
-    scaling = fmax(scaling, fabsf(control_omega[0]) / omega_rp_max);
-    scaling = fmax(scaling, fabsf(control_omega[1]) / omega_rp_max);
-    scaling = fmax(scaling, fabsf(control_omega[2]) / omega_yaw_max);
+    // // scale the commands to satisfy rate constraints
+    // float scaling = 1;
+    // scaling = fmax(scaling, fabsf(control_omega[0]) / omega_rp_max);
+    // scaling = fmax(scaling, fabsf(control_omega[1]) / omega_rp_max);
+    // scaling = fmax(scaling, fabsf(control_omega[2]) / omega_yaw_max);
 
-    control_omega[0] /= scaling;
-    control_omega[1] /= scaling;
-    control_omega[2] /= scaling;
+    // control_omega[0] /= scaling;
+    // control_omega[1] /= scaling;
+    // control_omega[2] /= scaling;
     // Chaoyi
     control_thrust = setpoint->acceleration.z;
   }
@@ -435,14 +436,27 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
     control->torque[2] =  0.0f;
   } else {
     // control the body torques
-    struct vec omegaErr = mkvec((control_omega[0] - omega[0])/tau_rp_rate,
-                        (control_omega[1] - omega[1])/tau_rp_rate,
-                        (control_omega[2] - omega[2])/tau_yaw_rate);
+    // struct vec omegaErr = mkvec((control_omega[0] - omega[0])/tau_rp_rate, 
+    //                     (control_omega[1] - omega[1])/tau_rp_rate,
+    //                     (control_omega[2] - omega[2])/tau_yaw_rate);
+
+    struct vec omega_err = mkvec((control_omega[0] - omega[0]), 
+                        (control_omega[1] - omega[1]),
+                        (control_omega[2] - omega[2]));
+
+    // omega gain  = [kR_xy, kR_xy, kR_z]
+    // define vector omega_gain = [kR_xy, kR_xy, kR_z]
+    struct vec omega_gain = mkvec(self->kR_xy, self->kR_xy, self->kR_z);
+
+    struct vec alpha_desired = veltmul(omega_err, omega_gain);
+
+    struct vec control_torque = mvmul(CRAZYFLIE_INERTIA, alpha_desired);
 
     // update the commanded body torques based on the current error in body rates
-    omegaErr = veltmul(omegaErr, OMEGA_GAIN);
+    // omegaErr = veltmul(omegaErr, omega_gain);
+    
 
-    control_torque = mvmul(CRAZYFLIE_INERTIA, omegaErr);
+    // control_torque = mvmul(CRAZYFLIE_INERTIA, omegaErr);
 
     control->thrustSi = control_thrust * CF_MASS; // force to provide control_thrust
     control->torqueX = control_torque.x;

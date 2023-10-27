@@ -13,6 +13,7 @@ import os
 import pickle
 from copy import deepcopy
 import time
+from line_profiler import LineProfiler
 
 import jax
 import chex
@@ -22,8 +23,23 @@ import quadjax
 from quadjax.envs.quad3d_free import Quad3D, get_controller
 from quadjax.train import ActorCritic, Compressor, Adaptor
 from quadjax import controllers
-from quadjax.dynamics import utils
+from quadjax.dynamics import utils, geom
 from quadjax.dynamics.dataclass import EnvParams3D, EnvState3D, Action3D
+
+def do_profile(follow=[]):
+    def inner(func):
+        def profiled_func(*args, **kwargs):
+            try:
+                profiler = LineProfiler()
+                profiler.add_function(func)
+                for f in follow:
+                    profiler.add_function(f)
+                profiler.enable_by_count()
+                return func(*args, **kwargs)
+            finally:
+                profiler.print_stats()
+        return profiled_func
+    return inner
 
 
 class Crazyflie:
@@ -86,6 +102,9 @@ class Crazyflie:
         self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.swarm.allcfs)
         # self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', self.state_callback_cf, rate)
 
+        # ROS timer
+        self.last_control_time = 0.0
+
     # def state_callback_cf_tf(self, data):
     #     pos = data.pose.position
     #     quat = data.pose.orientation
@@ -103,7 +122,10 @@ class Crazyflie:
 
         vel_hist = jnp.diff(self.pos_hist, axis=0) / dt
         dquat_hist = jnp.diff(self.quat_hist, axis=0) # NOTE diff here will make the length of dquat_hist 1 less than the others
-        omega_hist = 2 * dquat_hist[:, :-1] / (jnp.linalg.norm(self.quat_hist[:-1,:-1], axis=-1, keepdims=True)+1e-3) / dt
+        
+        quat_hist_conj = jnp.concatenate([-self.quat_hist[:, :-1], self.quat_hist[:, -1:]], axis=-1)
+        omega_hist = 2 * jax.vmap(geom.multiple_quat)(quat_hist_conj[:-1], dquat_hist/dt)[:, :-1]
+
 
         return EnvState3D(
             # drone
@@ -143,7 +165,7 @@ class Crazyflie:
             omega_hist = omega_hist,
             action_hist = self.action_hist,
             # control parameters
-            control_params = self.control_params,
+            control_params = None, # NOTE: disable control_params for now
         )
 
     def get_drone_state(self):
@@ -211,18 +233,19 @@ class Crazyflie:
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
 
+        self.last_control_time = self.timeHelper.time()
+
         return next_state_dict
     
+    # @do_profile()
     def step(self, action: jnp.ndarray, action_sim = None):
-        time_star = time.time()
+        # time_star = time.time()
         if action_sim is None:
             action_sim = action
         rng_step, self.rng = jax.random.split(self.rng)
 
         # step simulator state
-        t0 = time.time()
         obs_sim, self.state_sim, reward_sim, done_sim, info_sim = jax.block_until_ready(self.step_jit(rng_step, self.state_sim, action_sim, self.env_params)) 
-        print("simulator step time cost: ", (time.time() - t0)*1000, "ms")
         
         # step real-world state
         thrust_tar = (action[0]+1.0)/2.0*self.env.default_params.max_thrust
@@ -232,6 +255,11 @@ class Crazyflie:
         # wait for next time step
         dt = self.env.default_params.dt
         next_time = (int((self.timeHelper.time())/ dt) + 1) * dt
+        delta_time = next_time - self.last_control_time
+        if delta_time > (dt+1e-3):
+            # warning if the time difference is too large
+            print(f"WARNING: time difference is too large: {delta_time:.2f} s")
+        self.last_control_time = next_time
         while (self.timeHelper.time() <= next_time):
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
 
@@ -248,9 +276,9 @@ class Crazyflie:
 
         self.pub_state()
 
-        time_end = time.time()
-        running_freq = 1.0 / (time_end - time_star)
-        print(f"running frequency: {running_freq:.2f} Hz", "time cost: ", time_end - time_star, "s")
+        # time_end = time.time()
+        # running_freq = 1.0 / (time_end - time_star)
+        # print(f"running frequency: {running_freq:.2f} Hz", "time cost: ", time_end - time_star, "s")
 
         return {
             'real': [obs_real, self.state_real, reward_real, done_real, info_real],
@@ -299,7 +327,7 @@ class Crazyflie:
     
 def main(repeat_times = 1, filename = ''):
 
-    env = Crazyflie(task='tracking_zigzag', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
+    env = Crazyflie(task='tracking_zigzag', controller_name='RMA', controller_params='real/ppo_params_RMA-DR')
 
     print('reset...')
     next_state_dict = env.reset()
