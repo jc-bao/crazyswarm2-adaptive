@@ -123,7 +123,7 @@ class Crazyflie:
         vel_hist = jnp.diff(self.pos_hist, axis=0) / dt
         dquat_hist = jnp.diff(self.quat_hist, axis=0) # NOTE diff here will make the length of dquat_hist 1 less than the others
         
-        quat_hist_conj = jnp.concatenate([-self.quat_hist[:, :-1], self.quat_hist[:, -1:]], axis=-1)
+        quat_hist_conj = jnp.concatenate([self.quat_hist[:, :-1], self.quat_hist[:, -1:]], axis=-1)
         omega_hist = 2 * jax.vmap(geom.multiple_quat)(quat_hist_conj[:-1], dquat_hist/dt)[:, :-1]
 
 

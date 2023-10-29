@@ -2,14 +2,16 @@ from crazyflie_py import Crazyswarm
 import numpy as np
 import tf2_ros
 import rclpy
-from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, Transform
+from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, Transform, Vector3Stamped
 from tf2_geometry_msgs import do_transform_pose
 from .pid_controller import PIDController, PIDParam, PIDState
-from nav_msgs.msg import Path
+from nav_msgs.msg import Path, Odometry
 from std_msgs.msg import Header
 from .util import np2point, np2quat, np2vec3, line_traj
 from rosbag2_py import SequentialWriter
 import time
+from . import geom
+
 
 class Crazyflie:
 
@@ -40,6 +42,9 @@ class Crazyflie:
         self.bag_path = bag_path_param.get_parameter_value().string_value
         if not self.bag_path:
             self.allcfs.get_logger().warn("bag_path is not set, bag will not be recorded, set bag_path to record bag")
+        else:
+            pass
+        
         # check if no action output
         no_action_param = self.allcfs.declare_parameter('no_action', False)
         self.no_action = no_action_param.get_parameter_value().bool_value
@@ -54,11 +59,11 @@ class Crazyflie:
         
         self.pos_pid_param = PIDParam(
             m=self.mass, 
-            g=self.g, max_thrust=0.6, 
-            max_omega=np.array([1.0, 1.0, 1.0])*0.1, 
+            g=self.g, max_thrust=2.0, 
+            max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
             Kp=np.array([1.0, 1.0, 1.0])*2.0, 
             Kd=np.array([1.0, 1.0, 1.0])*2.0, 
-            Kp_att=np.array([1.0, 1.0, 1.0])*0.05)
+            Kp_att=np.array([1.0, 1.0, 1.0])*0.1)
         
         self.pos_pid = PIDController(self.pos_pid_param)
 
@@ -78,12 +83,13 @@ class Crazyflie:
             omega=np.zeros(3))
 
         # ROS related initialization
-        self.allcfs.create_subscription(PoseStamped, f'{self.cf.prefix}/pose', self.state_callback_cf, self.rate)
+        self.allcfs.create_subscription(Odometry, f'{self.cf.prefix}/odom', self.odom_callback_cf, 10)
+        print(f"subscribe to {self.cf.prefix}/odom")
 
         # initialize publisher
-        self.target_pub = self.allcfs.create_publisher(PoseStamped, 'target_pose', self.rate)
-        self.traj_pub = self.allcfs.create_publisher(Path, 'traj', self.rate)
-        self.pos_real_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_real', self.rate)
+        self.target_pub = self.allcfs.create_publisher(PoseStamped, 'target_pose', 10)
+        self.traj_pub = self.allcfs.create_publisher(Path, 'traj', 10)
+        self.omega_debug_pub = self.swarm.allcfs.create_publisher(Vector3Stamped, 'omega_debug', 10)
         
         # initialize tf
         self.tf_buffer = tf2_ros.Buffer()
@@ -96,45 +102,33 @@ class Crazyflie:
             transform=Transform(translation=np2vec3(self.world_center), 
                                 rotation=np2quat(np.array([0.0, 0.0, 0.0, 1.0]))))
         self.static_tf_publisher.sendTransform(static_transformStamped)        
+            
+            
+    
+    def odom_callback_cf(self, odom_msg:Odometry):
+        pos = odom_msg.pose.pose.position
+        quat = odom_msg.pose.pose.orientation
+        vel = odom_msg.twist.twist.linear
+        omega = odom_msg.twist.twist.angular
         
-        if self.is_sim:
-            static_transformStamped = TransformStamped(
-                header=Header(frame_id=f"{self.cf_name}"), 
-                child_frame_id=f"{self.cf_name}/kf", 
-                transform=Transform(translation=np2vec3(np.array([0.0, 0.0, 0.0])), 
-                                    rotation=np2quat(np.array([0.0, 0.0, 0.0, 1.0]))))
-            self.static_tf_publisher.sendTransform(static_transformStamped)
-            
-            
-
-    def state_callback_cf(self, data):
-        msg = TransformStamped()
+        quat_tmp = np.array([quat.x, quat.y, quat.z, quat.w])
+        quat_deriv = (quat_tmp - self.drone_state.quat) * self.rate
+        quat_conj = np.array([quat.x, quat.y, quat.z, quat.w])
+        omega_diff = 2 * geom.multiple_quat(quat_conj, quat_deriv)[:-1]
+        
+        self.drone_state.pos = np.array([pos.x, pos.y, pos.z])
+        self.drone_state.quat = np.array([quat.x, quat.y, quat.z, quat.w])
+        self.drone_state.vel = np.array([vel.x, vel.y, vel.z])
+        self.drone_state.omega = np.array([omega.x, omega.y, omega.z])
+                
+        msg = Vector3Stamped()
+        msg.header = Header()
         msg.header.stamp = rclpy.time.Time().to_msg()
-        msg.header.frame_id = data.header.frame_id
-        msg.child_frame_id = f"{self.cf_name}/kf"
-        msg.transform.translation = data.pose.position
-        msg.transform.rotation = data.pose.orientation
-        self.tf_publisher.sendTransform(msg)
-
-
-    def get_drone_state(self):
-        msg = self.tf_buffer.lookup_transform('world', f"{self.cf_name}/kf", rclpy.time.Time())
-        pos = msg.transform.translation
-        quat = msg.transform.rotation
+        msg.vector = np2vec3(omega_diff/np.pi*180)
+        self.omega_debug_pub.publish(msg)
         
-        # calculate velocity using finite difference, change to KF later
-        pos = np.array([pos.x, pos.y, pos.z], dtype=np.float32)
-        quat = np.array([quat.x, quat.y, quat.z, quat.w], dtype=np.float32)
-        self.drone_state.vel = (pos - self.drone_state.pos) * self.rate
-        quat_deriv = (quat - self.drone_state.quat) * self.rate
-        self.drone_state.omega = 2 * quat_deriv[:-1] / (np.linalg.norm(self.drone_state.quat[:-1], axis=-1, keepdims=True)+1e-3)
-        self.drone_state.pos = pos
-        self.drone_state.quat = quat
-
-        self.pos_real_pub.publish(PoseStamped(
-            header=Header(frame_id="world"),
-            pose=Pose(position=np2point(self.drone_state.pos),
-                        orientation=np2quat(self.drone_state.quat))))
+        
+        # self.allcfs.get_logger().info(f"pos: {self.drone_state.pos}, quat: {self.drone_state.quat}, vel: {self.drone_state.vel}, omega: {self.drone_state.omega}", throttle_duration_sec=1.0)
     
     def get_drone_target(self, omega_target:np.ndarray):
         # update target
@@ -180,7 +174,6 @@ class Crazyflie:
         self.traj.header.stamp = rclpy.time.Time().to_msg()
         self.traj_pub.publish(self.traj)
 
-        self.get_drone_state()
         self.timeHelper.sleepForRate(self.rate)
         
     def step(self, action):
@@ -196,11 +189,10 @@ class Crazyflie:
             self.set_attirate(np.zeros(3), 0.0)
         else:    
             self.set_attirate(omega_target, thrust_target)
-        # time.sleep(0.1)
+            
         self.timeHelper.sleepForRate(self.rate)
         
         # observation
-        self.get_drone_state()
         self.get_drone_target(omega_target)
         
 
@@ -254,7 +246,7 @@ class Crazyflie:
         traj.header.frame_id = "map"
         
         base_w = 2 * np.pi / 4.0
-        t = np.arange(0, int(5.0*self.rate)) / self.rate
+        t = np.arange(0, int(10.0*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((len(t), 3))
         traj_vxyz = np.zeros((len(t), 3))
@@ -271,7 +263,7 @@ class Crazyflie:
             pose.pose.position = np2point(traj_xyz[j])
             traj.poses.append(pose)
 
-        current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}/kf", rclpy.time.Time()).transform.translation
+        current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
         current_point = np.array([current_point.x, current_point.y, current_point.z])
 
         # takeoff trajectory

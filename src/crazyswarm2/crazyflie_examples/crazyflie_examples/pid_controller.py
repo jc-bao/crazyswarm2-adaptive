@@ -4,8 +4,9 @@ from . import geom
 import transforms3d as tf3d
 import rclpy
 from geometry_msgs.msg import Vector3Stamped, Vector3
+from nav_msgs.msg import Odometry
 from std_msgs.msg import Header
-from .util import np2vec3
+from .util import np2vec3, np2point, np2quat
 
 
 @dataclass
@@ -34,11 +35,10 @@ def print_arr(arr):
 class PIDController(rclpy.node.Node):
     def __init__(self, params: PIDParam):
         super().__init__("pid_controller")
-        self.attitude_desire_pub = self.create_publisher(Vector3Stamped, "attitude_desire", 10)
-        self.attitude_pub = self.create_publisher(Vector3Stamped, "attitude", 10)
+        
         self.angle_err_pub = self.create_publisher(Vector3Stamped, "angle_err", 10)
-        self.omega_d_pub = self.create_publisher(Vector3Stamped, "omega_d", 10)
-        self.omega_pub = self.create_publisher(Vector3Stamped, "omega", 10)
+        self.target_pub = self.create_publisher(Odometry, "target", 10)
+        self.state_pub = self.create_publisher(Odometry, "state", 10)
         
         self.params = params
 
@@ -54,6 +54,7 @@ class PIDController(rclpy.node.Node):
         )
         thrust = (Q.T @ f_d)[2]
         thrust = np.clip(thrust, 0.0, self.params.max_thrust)
+        # print("f_d", f_d, "thrust", thrust)
 
         # attitude control
         z_d = f_d / np.linalg.norm(f_d)
@@ -73,23 +74,26 @@ class PIDController(rclpy.node.Node):
         msg = Vector3Stamped()
         msg.header = Header()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.vector = Vector3()
-        angle_desire = tf3d.euler.mat2euler(R_d)
-        msg.vector = np2vec3(angle_desire)
-        self.attitude_desire_pub.publish(msg)
-        
-        angle = tf3d.euler.mat2euler(Q)
-        msg.vector = np2vec3(angle)
-        self.attitude_pub.publish(msg)
-        
         msg.vector = np2vec3(angle_err)
         self.angle_err_pub.publish(msg)
         
-        msg.vector = np2vec3(omega_d)
-        self.omega_d_pub.publish(msg)
-
-        msg.vector = np2vec3(state.omega)
-        self.omega_pub.publish(msg)
+        msg = Odometry()
+        msg.header = Header()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.pose.pose.position = np2point(state.pos)
+        msg.pose.pose.orientation = np2quat(state.quat)
+        msg.twist.twist.linear = np2vec3(state.vel)
+        msg.twist.twist.angular = np2vec3(state.omega)
+        self.state_pub.publish(msg)
+        
+        msg = Odometry()
+        msg.header = Header()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.pose.pose.position = np2point(target.pos)
+        msg.pose.pose.orientation = np2quat(target.quat)
+        msg.twist.twist.linear = np2vec3(target.vel)
+        msg.twist.twist.angular = np2vec3(target.omega/np.pi*180)
+        self.target_pub.publish(msg)
 
         # generate action
         return np.concatenate([np.array([thrust]), omega_d])

@@ -18,6 +18,7 @@ from crazyflie_interfaces.msg import Hover, FullState
 
 from std_srvs.srv import Empty
 from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 
 from functools import partial
 
@@ -92,6 +93,7 @@ class CrazyflieServer(Node):
         self.create_service(GoTo, "all/go_to", self._go_to_callback)
         self.create_service(StartTrajectory, "all/start_trajectory", self._start_trajectory_callback)
 
+        self.odom_pub = {}
         for name, _ in self.cfs.items():
             self.create_service(
                 Empty, name +
@@ -128,11 +130,34 @@ class CrazyflieServer(Node):
                 FullState, name +
                 "/cmd_full_state", partial(self._cmd_full_state_changed, name=name), 10
             )
+            self.odom_pub[name] = self.create_publisher(
+                Odometry, name + "/odom", 10
+            )
 
         # step as fast as possible
         max_dt = 0.0 if "max_dt" not in self._ros_parameters["sim"] else self._ros_parameters["sim"]["max_dt"]
         self.timer = self.create_timer(max_dt, self._timer_callback)
         self.is_shutdown = False
+
+    def getOdometry(self, cf_name, state):
+        msg = Odometry()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "world"
+        msg.child_frame_id = cf_name
+        msg.pose.pose.position.x = state.pos[0]
+        msg.pose.pose.position.y = state.pos[1]
+        msg.pose.pose.position.z = state.pos[2]
+        msg.pose.pose.orientation.x = state.quat[1]
+        msg.pose.pose.orientation.y = state.quat[2]
+        msg.pose.pose.orientation.z = state.quat[3]
+        msg.pose.pose.orientation.w = state.quat[0]
+        msg.twist.twist.linear.x = state.vel[0]
+        msg.twist.twist.linear.y = state.vel[1]
+        msg.twist.twist.linear.z = state.vel[2]
+        msg.twist.twist.angular.x = state.omega[0]
+        msg.twist.twist.angular.y = state.omega[1]
+        msg.twist.twist.angular.z = state.omega[2]
+        return msg
 
     def on_shutdown_callback(self):
         if not self.is_shutdown:
@@ -153,8 +178,9 @@ class CrazyflieServer(Node):
         states_next = self.backend.step(states_desired, actions)
 
         # update the resulting state
-        for state, (_, cf) in zip(states_next, self.cfs.items()):
+        for state, (name, cf) in zip(states_next, self.cfs.items()):
             cf.setState(state)
+            self.odom_pub[name].publish(self.getOdometry(name, state))
 
         for vis in self.visualizations:
             vis.step(self.backend.time(), states_next, states_desired, actions)

@@ -19,8 +19,8 @@ def multiple_quat(quat1: np.ndarray, quat2: np.ndarray) -> np.ndarray:
     quat = np.zeros(4)
     w = quat1[3] * quat2[3] - np.dot(quat1[:3], quat2[:3])
     xyz = quat1[3] * quat2[:3] + quat2[3] * quat1[:3] + np.cross(quat1[:3], quat2[:3])
-    quat = quat.at[3].set(w)
-    quat = quat.at[:3].set(xyz)
+    quat[3]=w
+    quat[:3]=xyz
     return quat
 
 
