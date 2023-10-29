@@ -4,7 +4,8 @@ from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from rclpy.time import Time
 from ..sim_data_types import State, Action
-
+# import ROS messages for publishing rpm
+from std_msgs.msg import Float32MultiArray
 
 import numpy as np
 import rowan
@@ -16,6 +17,8 @@ class Backend:
         self.node = node
         self.names = names
         self.clock_publisher = node.create_publisher(Clock, 'clock', 10)
+        # publish rpm to the rpm topic with message type float array 
+        self.rpm_publisher = node.create_publisher(Float32MultiArray, 'rpm', 10)
         self.t = 0
         self.dt = 0.0005
 
@@ -34,6 +37,17 @@ class Backend:
         next_states = []
 
         for uav, action in zip(self.uavs, actions):
+            
+            normed_rpm = []
+            for rpm in action.rpm:
+                normed_rpm.append(rpm / (25e3-1))
+                if normed_rpm[-1] > 0.99:
+                    print(f"WARNING: RPM is too high, was {normed_rpm}")
+            # publish normed_rpm
+            rpm_message = Float32MultiArray()
+            rpm_message.data = normed_rpm
+            self.rpm_publisher.publish(rpm_message)
+
             uav.step(action, self.dt)
             next_states.append(uav.state)
 

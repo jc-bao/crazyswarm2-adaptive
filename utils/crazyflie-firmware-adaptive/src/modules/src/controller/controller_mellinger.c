@@ -57,8 +57,8 @@ static struct vec OMEGA_GAIN = {1.0f, 1.0f, 1.0f};
 
 
 // minimum and maximum body rates
-static float omega_rp_max = 30;
-static float omega_yaw_max = 10;
+static float omega_rp_max = 300;
+static float omega_yaw_max = 100;
 static float heuristic_rp = 12;
 static float heuristic_yaw = 5;
 
@@ -88,13 +88,13 @@ static controllerMellinger_t g_self = {
   .i_range_z  = 0.4,
 
   // Attitude
-  .kR_xy = 30, // P
+  .kR_xy = 300, // P
   .kw_xy = 20000, // D
   .ki_m_xy = 0.0, // I
   .i_range_m_xy = 1.0,
 
   // Yaw
-  .kR_z = 10, // P
+  .kR_z = 100, // P
   .kw_z = 12000, // D
   .ki_m_z = 500, // I
   .i_range_m_z  = 1500,

@@ -19,8 +19,8 @@ robot_types:
       voltage_critical: 3.7 # V
     firmware_params:
       ctrlMel:
-        kR_xy: 100
-        kR_z: 30
+        kR_xy: 300
+        kR_z: 100
 
 # global settings for all robots
 all:

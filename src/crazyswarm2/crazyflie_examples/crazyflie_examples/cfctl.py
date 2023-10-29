@@ -9,10 +9,8 @@ from nav_msgs.msg import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 from functools import partial
-import os
 import pickle
 from copy import deepcopy
-import time
 from line_profiler import LineProfiler
 
 import jax
@@ -327,7 +325,7 @@ class Crazyflie:
     
 def main(repeat_times = 1, filename = ''):
 
-    env = Crazyflie(task='tracking_zigzag', controller_name='RMA', controller_params='real/ppo_params_RMA-DR')
+    env = Crazyflie(task='tracking_zigzag', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
 
     print('reset...')
     next_state_dict = env.reset()
@@ -347,6 +345,8 @@ def main(repeat_times = 1, filename = ''):
         rng, rng_act = jax.random.split(rng)
         action, env.control_params, control_info = jax.block_until_ready(env.controller_jit(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real))
         action_sim, _, _ = jax.block_until_ready(env.controller_jit(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim))
+        # action = np.array([0.0, 1.0, 0.0, 0.0])
+        # action_sim = np.array([0.0, 1.0, 0.0, 0.0])
 
         # manually record certain control parameters into state_seq
         control_params = env.control_params
@@ -361,7 +361,7 @@ def main(repeat_times = 1, filename = ''):
         obs_sim, state_sim, reward_sim, done_sim, info_sim = next_state_dict['sim']
 
         # DEBUG: should be done sim
-        if done_sim:
+        if done_real:
             control_params = env.controller.update_params(env.env_params, control_params)
             n_dones += 1
 
