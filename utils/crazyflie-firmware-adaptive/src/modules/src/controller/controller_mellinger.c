@@ -440,6 +440,8 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
     //                     (control_omega[1] - omega[1])/tau_rp_rate,
     //                     (control_omega[2] - omega[2])/tau_yaw_rate);
 
+    struct vec omega_vec = mkvec(omega[0], omega[1], omega[2]);
+
     struct vec omega_err = mkvec((control_omega[0] - omega[0]), 
                         (control_omega[1] - omega[1]),
                         (control_omega[2] - omega[2]));
@@ -450,7 +452,7 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
 
     struct vec alpha_desired = veltmul(omega_err, omega_gain);
 
-    struct vec control_torque = mvmul(CRAZYFLIE_INERTIA, alpha_desired);
+    struct vec control_torque = vadd(mvmul(CRAZYFLIE_INERTIA, alpha_desired), vcross(omega_vec, mvmul(CRAZYFLIE_INERTIA, omega_vec)));
 
     // update the commanded body torques based on the current error in body rates
     // omegaErr = veltmul(omegaErr, omega_gain);
