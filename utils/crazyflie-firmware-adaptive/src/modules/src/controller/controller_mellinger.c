@@ -463,6 +463,8 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
     control->torqueY = control_torque.y;
     control->torqueZ = control_torque.z;
 
+    // DEBUG_PRINT("omega_d: %.4f %.4f %.4f, omega: %.4f %.4f %.4f\n", control_omega[0], control_omega[1], control_omega[2], omega[0], omega[1], omega[2]);
+
     // printf("thrust: %.4f, torqueX: %.4f, torqueY: %.4f, torqueZ: %.4f\n", control->thrustSi, control->torqueX, control->torqueY, control->torqueZ);    
   }
 

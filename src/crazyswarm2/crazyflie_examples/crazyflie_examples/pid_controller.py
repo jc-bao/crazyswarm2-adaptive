@@ -83,7 +83,7 @@ class PIDController(rclpy.node.Node):
         msg.pose.pose.position = np2point(state.pos)
         msg.pose.pose.orientation = np2quat(state.quat)
         msg.twist.twist.linear = np2vec3(state.vel)
-        msg.twist.twist.angular = np2vec3(state.omega)
+        msg.twist.twist.angular = np2vec3(state.omega/np.pi*180)
         self.state_pub.publish(msg)
         
         msg = Odometry()

@@ -113,7 +113,7 @@ class Crazyflie:
         
         quat_tmp = np.array([quat.x, quat.y, quat.z, quat.w])
         quat_deriv = (quat_tmp - self.drone_state.quat) * self.rate
-        quat_conj = np.array([quat.x, quat.y, quat.z, quat.w])
+        quat_conj = np.array([-quat.x, -quat.y, -quat.z, quat.w])
         omega_diff = 2 * geom.multiple_quat(quat_conj, quat_deriv)[:-1]
         
         self.drone_state.pos = np.array([pos.x, pos.y, pos.z])
@@ -126,6 +126,8 @@ class Crazyflie:
         msg.header.stamp = rclpy.time.Time().to_msg()
         msg.vector = np2vec3(omega_diff/np.pi*180)
         self.omega_debug_pub.publish(msg)
+        
+        self.drone_state.omega = omega_diff
         
         
         # self.allcfs.get_logger().info(f"pos: {self.drone_state.pos}, quat: {self.drone_state.quat}, vel: {self.drone_state.vel}, omega: {self.drone_state.omega}", throttle_duration_sec=1.0)
@@ -191,6 +193,7 @@ class Crazyflie:
             self.set_attirate(omega_target, thrust_target)
             
         self.timeHelper.sleepForRate(self.rate)
+
         
         # observation
         self.get_drone_target(omega_target)

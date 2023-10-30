@@ -4,7 +4,7 @@
       query_all_values_on_connect: False
     # simulation related
     sim:
-      max_dt: 0 #0.1              # artificially limit the step() function (set to 0 to disable)
+      max_dt: 0.01 #0.1              # artificially limit the step() function (set to 0 to disable)
       backend: np                 # see backend folder for a list 
       visualizations:             # see visualization folder for a list
         rviz:
