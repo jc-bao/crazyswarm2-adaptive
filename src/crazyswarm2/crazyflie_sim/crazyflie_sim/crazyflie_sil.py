@@ -318,10 +318,10 @@ class CrazyflieSIL:
             force_in_newton = force_in_grams * 9.81 / 1000.0
             return np.maximum(force_in_newton, 0)
 
-        return sim_data_types.Action([pwm_to_rpm(self.motors_thrust_pwm.motors.m1),
-            pwm_to_rpm(self.motors_thrust_pwm.motors.m2),
-            pwm_to_rpm(self.motors_thrust_pwm.motors.m3),
-            pwm_to_rpm(self.motors_thrust_pwm.motors.m4)])
+        return sim_data_types.Action([pwm_to_rpm(self.motors_thrust_pwm.motors.m1)*1.0,
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m2)*1.0,
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m3)*1.0,
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m4)*1.0])
 
 
     @staticmethod

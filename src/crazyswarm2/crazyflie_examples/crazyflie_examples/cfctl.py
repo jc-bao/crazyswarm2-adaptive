@@ -3,6 +3,7 @@ import numpy as np
 from icecream import ic
 import tf2_ros
 import transforms3d as tf3d
+from std_msgs.msg import Float32MultiArray
 import rclpy
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
@@ -83,6 +84,10 @@ class Crazyflie:
         self.pos_hist = jnp.zeros((self.env.default_params.adapt_horizon+3, 3), dtype=jnp.float32)
         self.quat_hist = jnp.zeros((self.env.default_params.adapt_horizon+3, 4), dtype=jnp.float32)
         self.action_hist = jnp.zeros((self.env.default_params.adapt_horizon+2, 4), dtype=jnp.float32)
+        # Debug values
+        self.rpm = np.zeros(4)
+        self.omega = np.zeros(3)
+        self.omega_hist = jnp.zeros((self.env.default_params.adapt_horizon+3, 3), dtype=jnp.float32)
 
         # crazyswarm related initialization
         self.swarm = Crazyswarm()
@@ -95,9 +100,12 @@ class Crazyflie:
         self.pos_real_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_real', rate)
         self.pos_tar_pub = self.swarm.allcfs.create_publisher(PoseStamped, 'pos_tar', rate)
         self.traj_pub = self.swarm.allcfs.create_publisher(Path, 'traj', 1)
+        self.omega_pub = self.swarm.allcfs.create_publisher(Float32MultiArray, 'omega_diff', rate)
         # listener
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.swarm.allcfs)
+        self.rpm_listener = self.swarm.allcfs.create_subscription(Float32MultiArray, 'rpm', self.rpm_callback, 10)
+        self.omega_listener = self.swarm.allcfs.create_subscription(Float32MultiArray, 'omega', self.omega_callback, 10)
         # self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', self.state_callback_cf, rate)
 
         # ROS timer
@@ -109,6 +117,12 @@ class Crazyflie:
     #     self.pos = np.array([pos.x, pos.y, pos.z])
     #     self.quat = np.array([quat.x, quat.y, quat.z, quat.w])
 
+    def rpm_callback(self, data):
+        self.rpm = np.array(data.data)
+
+    def omega_callback(self, data):
+        self.omega = np.array(data.data)
+
     def state_callback_cf(self, data):
         pos = data.pose.position
         quat = data.pose.orientation
@@ -119,11 +133,12 @@ class Crazyflie:
         dt = self.env.default_params.dt
 
         vel_hist = jnp.diff(self.pos_hist, axis=0) / dt
-        dquat_hist = jnp.diff(self.quat_hist, axis=0) # NOTE diff here will make the length of dquat_hist 1 less than the others
         
-        quat_hist_conj = jnp.concatenate([-self.quat_hist[:, :-1], self.quat_hist[:, -1:]], axis=-1)
-        omega_hist = 2 * jax.vmap(geom.multiple_quat)(quat_hist_conj[:-1], dquat_hist/dt)[:, :-1]
-
+        # dquat_hist = jnp.diff(self.quat_hist, axis=0) # NOTE diff here will make the length of dquat_hist 1 less than the others
+        # quat_hist_conj = jnp.concatenate([-self.quat_hist[:, :-1], self.quat_hist[:, -1:]], axis=-1)
+        # omega_hist = 2 * jax.vmap(geom.multiple_quat)(quat_hist_conj[:-1], dquat_hist/dt)[:, :-1]
+        # DEBUG
+        omega_hist = self.omega_hist
 
         return EnvState3D(
             # drone
@@ -265,6 +280,10 @@ class Crazyflie:
         pos, quat = self.get_drone_state()
         self.pos_hist = jnp.concatenate([self.pos_hist[1:], pos.reshape(1,3)], axis=0)
         self.quat_hist = jnp.concatenate([self.quat_hist[1:], quat.reshape(1,4)], axis=0)
+
+        # DEBUG
+        self.omega_hist = jnp.concatenate([self.omega_hist[1:], self.omega.reshape(1,3)], axis=0)
+
         self.action_hist = jnp.concatenate([self.action_hist[1:], action.reshape(1,4)], axis=0)
         self.state_real = self.get_real_state()
         obs_real = self.get_obs_jit(self.state_real, self.env_params)
@@ -317,6 +336,7 @@ class Crazyflie:
         self.pos_sim_pub.publish(self.get_pose_msg(self.state_sim.pos, self.state_sim.quat))
         self.pos_real_pub.publish(self.get_pose_msg(self.state_real.pos, self.state_real.quat))
         self.pos_tar_pub.publish(self.get_pose_msg(self.state_real.pos_tar, np.array([0.0, 0.0, 0.0, 1,0])))
+        self.omega_pub.publish(Float32MultiArray(data=self.state_real.omega))
 
     def emergency(self, obs):
         self.cf.emergency()
@@ -337,6 +357,7 @@ def main(repeat_times = 1, filename = ''):
     state_real_seq, obs_real_seq, reward_real_seq = [], [], []
     state_sim_seq, obs_sim_seq, reward_sim_seq = [], [], []
     control_seq = []
+    ros_info_seq = []
     n_dones = 0
     while n_dones < repeat_times:
         state_real_seq.append(state_real)
@@ -369,6 +390,7 @@ def main(repeat_times = 1, filename = ''):
         reward_sim_seq.append(reward_sim)
         obs_real_seq.append(obs_real)
         obs_sim_seq.append(obs_sim)
+        ros_info_seq.append({'rpm': env.rpm})
 
     print('landing...')
     env.goto(jnp.array([0.0, 0.0, -env.world_center[2]+0.1]), timelimit=3.0)
@@ -380,7 +402,7 @@ def main(repeat_times = 1, filename = ''):
     if len(control_seq) > 0:
         # merge control_seq into state_seq with dict
         for i in range(len(state_real_seq)):
-            state_real_seq_dict[i] = {**state_real_seq_dict[i], **control_seq[i]}
+            state_real_seq_dict[i] = {**state_real_seq_dict[i], **control_seq[i], **ros_info_seq[i]}
             state_sim_seq_dict[i] = {**state_sim_seq_dict[i], **control_seq[i]}
     with open(f"{quadjax.get_package_path()}/../results/real_state_seq_{filename}.pkl", "wb") as f:
         pickle.dump(state_real_seq_dict, f)

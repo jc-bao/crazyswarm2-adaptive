@@ -5,7 +5,7 @@ from rosgraph_msgs.msg import Clock
 from rclpy.time import Time
 from ..sim_data_types import State, Action
 # import ROS messages for publishing rpm
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32MultiArray, Float32
 
 import numpy as np
 import rowan
@@ -17,8 +17,19 @@ class Backend:
         self.node = node
         self.names = names
         self.clock_publisher = node.create_publisher(Clock, 'clock', 10)
+
+        # debug publisher
         # publish rpm to the rpm topic with message type float array 
         self.rpm_publisher = node.create_publisher(Float32MultiArray, 'rpm', 10)
+        # publish tau_u
+        self.tau_u_publisher = node.create_publisher(Float32MultiArray, 'tau_u', 10)
+        # publish alpha
+        self.alpha_publisher = node.create_publisher(Float32MultiArray, 'alpha', 10)
+        # publish f_u
+        self.f_u_publisher = node.create_publisher(Float32, 'f_u', 10)
+        # publish omega
+        self.omega_publisher = node.create_publisher(Float32MultiArray, 'omega', 10)
+
         self.t = 0
         self.dt = 0.0005
 
@@ -47,11 +58,14 @@ class Backend:
             rpm_message = Float32MultiArray()
             rpm_message.data = normed_rpm
             self.rpm_publisher.publish(rpm_message)
+            self.tau_u_publisher.publish(Float32MultiArray(data=uav.tau_u))
+            self.alpha_publisher.publish(Float32MultiArray(data=uav.alpha))
+            self.f_u_publisher.publish(Float32(data=uav.f_u))
+            self.omega_publisher.publish(Float32MultiArray(data=uav.state.omega))
 
             uav.step(action, self.dt)
             next_states.append(uav.state)
 
-        # print(states_desired, actions, next_states)
         # publish the current clock
         clock_message = Clock()
         clock_message.clock = Time(seconds=self.time()).to_msg()
@@ -95,6 +109,11 @@ class Quadrotor:
 
         self.state = state
 
+        # debug state
+        self.f_u = 0.0
+        self.tau_u = np.zeros(3)
+        self.alpha = np.zeros(3)
+
     def step(self, action, dt):
 
         # convert RPM -> Force
@@ -111,6 +130,8 @@ class Quadrotor:
         eta = np.dot(self.B0, force)
         f_u = np.array([0,0,eta[0]])
         tau_u = np.array([eta[1],eta[2],eta[3]])
+        self.tau_u = tau_u
+        self.f_u = f_u[2]
 
         # dynamics 
         # dot{p} = v 
@@ -125,7 +146,8 @@ class Quadrotor:
         q_next = rowan.normalize(rowan.calculus.integrate(self.state.quat, self.state.omega, dt))
 
         # mJ = Jw x w + tau_u 
-        omega_next = self.state.omega + (self.inv_J * (np.cross(self.J * self.state.omega, self.state.omega) + tau_u)) * dt
+        self.alpha =(self.inv_J * (np.cross(self.J * self.state.omega, self.state.omega) + tau_u))
+        omega_next = self.state.omega + self.alpha * dt
 
         self.state.pos = pos_next
         self.state.vel = vel_next
