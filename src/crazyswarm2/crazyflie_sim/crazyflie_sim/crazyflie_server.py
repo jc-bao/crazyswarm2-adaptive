@@ -172,10 +172,15 @@ class CrazyflieServer(Node):
         states_desired = [cf.getSetpoint() for _, cf in self.cfs.items()]
 
         # execute the control loop (acc_z, torque -> rpm)
-        actions = [cf.executeController()  for _, cf in self.cfs.items()]
+        actions = []
+        infos = []
+        for _, cf in self.cfs.items():
+            action, info = cf.executeController()
+            actions.append(action)
+            infos.append(info)
 
         # execute the physics simulator
-        states_next = self.backend.step(states_desired, actions)
+        states_next = self.backend.step(states_desired, actions, infos)
 
         # update the resulting state
         for state, (name, cf) in zip(states_next, self.cfs.items()):

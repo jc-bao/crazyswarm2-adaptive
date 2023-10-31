@@ -22,11 +22,11 @@ class Backend:
         # publish rpm to the rpm topic with message type float array 
         self.rpm_publisher = node.create_publisher(Float32MultiArray, 'rpm', 10)
         # publish tau_u
-        self.tau_u_publisher = node.create_publisher(Float32MultiArray, 'tau_u', 10)
-        # publish alpha
-        self.alpha_publisher = node.create_publisher(Float32MultiArray, 'alpha', 10)
+        self.tau_u_publisher = node.create_publisher(Float32MultiArray, 'torque_applied', 10)
+        self.tau_u_d_publisher = node.create_publisher(Float32MultiArray, 'torque_desired', 10)
         # publish f_u
-        self.f_u_publisher = node.create_publisher(Float32, 'f_u', 10)
+        self.f_u_publisher = node.create_publisher(Float32, 'thrust_applied', 10)
+        self.f_u_d_publisher = node.create_publisher(Float32, 'thrust_desired', 10)
         # publish omega
         self.omega_publisher = node.create_publisher(Float32MultiArray, 'omega', 10)
 
@@ -41,29 +41,30 @@ class Backend:
     def time(self) -> float:
         return self.t
 
-    def step(self, states_desired: list[State], actions: list[Action]) -> list[State]:
+    def step(self, states_desired: list[State], actions: list[Action], infos: list[dict]) -> list[State]:
         # advance the time
         self.t += self.dt
 
         next_states = []
 
-        for uav, action in zip(self.uavs, actions):
+        for uav, action, info in zip(self.uavs, actions, infos):
             
             normed_rpm = []
             for rpm in action.rpm:
                 normed_rpm.append(rpm / (25e3-1))
-                if normed_rpm[-1] > 0.99:
-                    print(f"WARNING: RPM is too high, was {normed_rpm}")
+                # if normed_rpm[-1] > 0.99:
+                #     print(f"WARNING: RPM is too high, was {normed_rpm}")
             # publish normed_rpm
             rpm_message = Float32MultiArray()
             rpm_message.data = normed_rpm
             self.rpm_publisher.publish(rpm_message)
             self.tau_u_publisher.publish(Float32MultiArray(data=uav.tau_u))
-            self.alpha_publisher.publish(Float32MultiArray(data=uav.alpha))
+            self.tau_u_d_publisher.publish(Float32MultiArray(data=info['torque_desired']))
             self.f_u_publisher.publish(Float32(data=uav.f_u))
+            self.f_u_d_publisher.publish(Float32(data=info['thrust_desired']))
             self.omega_publisher.publish(Float32MultiArray(data=uav.state.omega))
 
-            uav.step(action, self.dt)
+            uav.step(action, self.dt, info)
             next_states.append(uav.state)
 
         # publish the current clock
@@ -114,7 +115,7 @@ class Quadrotor:
         self.tau_u = np.zeros(3)
         self.alpha = np.zeros(3)
 
-    def step(self, action, dt):
+    def step(self, action, dt, info=None):
 
         # convert RPM -> Force
         def rpm_to_force(rpm):
@@ -130,8 +131,14 @@ class Quadrotor:
         eta = np.dot(self.B0, force)
         f_u = np.array([0,0,eta[0]])
         tau_u = np.array([eta[1],eta[2],eta[3]])
+
+        # DEBUG
+        tau_u = info['torque_desired']
+        f_u[2] = info['thrust_desired']
+
         self.tau_u = tau_u
         self.f_u = f_u[2]
+
 
         # dynamics 
         # dot{p} = v 

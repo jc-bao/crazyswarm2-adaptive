@@ -27,6 +27,71 @@ def copy_svec(v):
     return firm.mkvec(v.x, v.y, v.z)
 
 
+def bodyrate_controller(control, setpoint, sensors, state, tick):
+    # run at 500Hz
+    if tick % 2 != 0:
+        return control
+    # get setpoint
+    rollrate_setpoint = np.radians(setpoint.attitudeRate.roll)
+    pitchrate_setpoint = np.radians(setpoint.attitudeRate.pitch)
+    yawrate_setpoint = np.radians(setpoint.attitudeRate.yaw)
+    omega_setpoint = np.array([rollrate_setpoint, pitchrate_setpoint, yawrate_setpoint])
+    zacc_setpoint = setpoint.acceleration.z
+
+    # get state
+    rollrate = np.radians(sensors.gyro.x)
+    pitchrate = np.radians(sensors.gyro.y)
+    yawrate = np.radians(sensors.gyro.z)
+    omega = np.array([rollrate, pitchrate, yawrate])
+
+    # compute control
+    omega_gain = np.array([100.0, 100.0, 30.0])
+    alpha_desired = (omega_setpoint - omega) * omega_gain
+    J = np.array([16.571710e-6, 16.655602e-6, 29.261652e-6])
+    torque = J * alpha_desired + np.cross(omega, J * omega)
+    thrust = zacc_setpoint * 0.027
+
+    # set control
+    control.torqueX = torque[0]
+    control.torqueY = torque[1]
+    control.torqueZ = torque[2]
+    control.thrustSi = thrust
+    control.controlMode = firm.controlModeForceTorque
+
+    return control
+
+def torque2rpm(torque, thrust):
+    arm_length = 0.046 # m
+    arm = 0.707106781 * arm_length
+    t2t = 0.006 # thrust-to-torque ratio
+    B0 = np.array([
+        [1, 1, 1, 1],
+        [-arm, -arm, arm, arm],
+        [-arm, arm, arm, -arm],
+        [-t2t, t2t, -t2t, t2t]
+        ])
+    B0_inv = np.linalg.pinv(B0)
+    tau_u = np.array([thrust, torque[0], torque[1], torque[2]])
+    force = np.matmul(B0_inv, tau_u)
+
+    # pwm2rpm conversion parameters p = [3.26535711e-01, 3.37495115e+03]
+    # rpm2force conversion parameters p = [2.55077341e-08, -4.92422570e-05, -1.51910248e-01]
+    # convert force to rpm, then to pwm
+    def force_to_rpm(force):
+        a, b, c = 2.55077341e-08, -4.92422570e-05, -1.51910248e-01
+        force_in_grams = np.clip(force * 1000.0 / 9.81, 0.0, 1000)
+        rpm = (-b + np.sqrt(b**2 - 4*a*(c-force_in_grams))) / (2*a)
+        return rpm
+    
+    def rpm_to_pwm(rpm):
+        a, b = 3.26535711e-01, 3.37495115e+03
+        pwm = 1/a * (rpm - b)
+        return pwm
+    
+    rpm = force_to_rpm(force)
+    return rpm
+
+
 class CrazyflieSIL:
 
     # Flight modes.
@@ -96,6 +161,8 @@ class CrazyflieSIL:
         elif controller_name == "brescianini":
             firm.controllerBrescianiniInit()
             self.controller = firm.controllerBrescianini
+        elif controller_name == 'bodyrate_python':
+            self.controller = bodyrate_controller
         else:
             raise ValueError("Unknown controller {}".format(controller_name))
 
@@ -279,18 +346,20 @@ class CrazyflieSIL:
 
     def executeController(self):
         if self.controller is None:
-            return None
+            return None, {}
 
         if self.mode == CrazyflieSIL.MODE_IDLE:
-            return sim_data_types.Action([0,0,0,0])
+            return sim_data_types.Action([0,0,0,0]), {'torque_desired': np.zeros(3, dtype=np.float32), 'thrust_desired': 0.0}
 
         time_in_seconds = self.time_func()
         # ticks is essentially the time in milliseconds as an integer
         tick = int(time_in_seconds * 1000)
-        if self.controller_name != "mellinger":
-            self.controller(self.control, self.setpoint, self.sensors, self.state, tick)
-        else:
+        if self.controller_name == "mellinger":
             self.controller(self.mellinger_control, self.control, self.setpoint, self.sensors, self.state, tick)
+        elif self.controller_name == "bodyrate_python":
+            self.control = self.controller(self.control, self.setpoint, self.sensors, self.state, tick)
+        else:
+            self.controller(self.control, self.setpoint, self.sensors, self.state, tick)
         return self._fwcontrol_to_sim_data_types_action()
 
     # "private" methods
@@ -317,11 +386,23 @@ class CrazyflieSIL:
             force_in_grams = np.polyval(p, pwm)
             force_in_newton = force_in_grams * 9.81 / 1000.0
             return np.maximum(force_in_newton, 0)
+        
+        info = {
+            'torque_desired': np.array([self.control.torqueX, self.control.torqueY, self.control.torqueZ]),
+            'thrust_desired': self.control.thrustSi,
+        }
 
-        return sim_data_types.Action([pwm_to_rpm(self.motors_thrust_pwm.motors.m1)*1.0,
+        rpms = [pwm_to_rpm(self.motors_thrust_pwm.motors.m1)*1.0,
             pwm_to_rpm(self.motors_thrust_pwm.motors.m2)*1.0,
             pwm_to_rpm(self.motors_thrust_pwm.motors.m3)*1.0,
-            pwm_to_rpm(self.motors_thrust_pwm.motors.m4)*1.0])
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m4)*1.0]
+        
+        # DEBUG: bypass powerDistributionCap
+        rpms = torque2rpm(np.array([self.control.torqueX, self.control.torqueY, self.control.torqueZ]), self.control.thrustSi)
+
+        action = sim_data_types.Action(rpms)
+
+        return action, info
 
 
     @staticmethod
