@@ -140,6 +140,10 @@ class Crazyflie:
         # DEBUG
         omega_hist = self.omega_hist
 
+        action = self.action_hist[-1]
+        last_thrust = (action[0]+1.0)/2.0*self.env.default_params.max_thrust
+        last_torque = action[1:4] * self.env.default_params.max_torque
+
         return EnvState3D(
             # drone
             pos = self.pos_hist[-1], 
@@ -167,8 +171,8 @@ class Crazyflie:
             vel_traj = self.state_sim.vel_traj,
             acc_traj = self.state_sim.acc_traj,
             # debug value
-            last_thrust = self.state_sim.last_thrust,
-            last_torque = self.state_sim.last_torque,
+            last_thrust = last_thrust,
+            last_torque = last_torque,
             # step
             time = self.state_sim.time,
             # disturbance
