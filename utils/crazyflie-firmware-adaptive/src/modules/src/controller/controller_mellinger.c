@@ -53,20 +53,20 @@ static struct mat33 CRAZYFLIE_INERTIA =
       {0.83e-6f, 16.6e-6f, 1.8e-6f},
       {0.72e-6f, 1.8e-6f, 29.3e-6f}}};
 
-static struct vec OMEGA_GAIN = {1.0f, 1.0f, 1.0f};
+// static struct vec OMEGA_GAIN = {1.0f, 1.0f, 1.0f};
 
 
 // minimum and maximum body rates
-static float omega_rp_max = 300;
-static float omega_yaw_max = 100;
-static float heuristic_rp = 12;
-static float heuristic_yaw = 5;
+// static float omega_rp_max = 300;
+// static float omega_yaw_max = 100;
+// static float heuristic_rp = 12;
+// static float heuristic_yaw = 5;
 
 // time constant of rotational rate control
-static float tau_rp_rate = 0.015;
-static float tau_yaw_rate = 0.0075;
+// static float tau_rp_rate = 0.015;
+// static float tau_yaw_rate = 0.0075;
 
-static float dt = 0.002;
+// static float dt = 0.002;
 
 // Global state variable used in the
 // firmware as the only instance and in bindings
@@ -144,7 +144,7 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
                                          const uint32_t tick)
 {
   static float control_omega[3];
-  static struct vec control_torque;
+//   static struct vec control_torque;
   static float control_thrust;
 
 //   DEBUG_PRINT("controllerMellinger\n");
