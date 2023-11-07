@@ -75,8 +75,8 @@ static float thrust_reduction_fairness = 0.25;
 // minimum and maximum body rates
 static float omega_rp_max = 30;
 static float omega_yaw_max = 10;
-static float heuristic_rp = 12;
-static float heuristic_yaw = 5;
+// static float heuristic_rp = 12;
+// static float heuristic_yaw = 5;
 
 
 // Struct for logging position information
@@ -362,17 +362,17 @@ void controllerBrescianini(control_t *control,
     // control_omega[2] = 2.0f / tau_rp * attError.z + radians(setpoint->attitudeRate.yaw); // due to the mixing, this will behave with time constant tau_yaw
 
     // apply the rotation heuristic
-    if (control_omega[0] * omega[0] < 0 && fabsf(omega[0]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
-      control_omega[0] = omega_rp_max * (omega[0] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
-    }
+    // if (control_omega[0] * omega[0] < 0 && fabsf(omega[0]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
+    //   control_omega[0] = omega_rp_max * (omega[0] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
+    // }
 
-    if (control_omega[1] * omega[1] < 0 && fabsf(omega[1]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
-      control_omega[1] = omega_rp_max * (omega[1] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
-    }
+    // if (control_omega[1] * omega[1] < 0 && fabsf(omega[1]) > heuristic_rp) { // desired rotational rate in direction opposite to current rotational rate
+    //   control_omega[1] = omega_rp_max * (omega[1] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
+    // }
 
-    if (control_omega[2] * omega[2] < 0 && fabsf(omega[2]) > heuristic_yaw) { // desired rotational rate in direction opposite to current rotational rate
-      control_omega[2] = omega_rp_max * (omega[2] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
-    }
+    // if (control_omega[2] * omega[2] < 0 && fabsf(omega[2]) > heuristic_yaw) { // desired rotational rate in direction opposite to current rotational rate
+    //   control_omega[2] = omega_rp_max * (omega[2] < 0 ? -1 : 1); // maximum rotational rate in direction of current rotation
+    // }
 
     // scale the commands to satisfy rate constraints
     float scaling = 1;

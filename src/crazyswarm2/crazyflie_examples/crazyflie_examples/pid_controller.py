@@ -41,6 +41,7 @@ class PIDController(rclpy.node.Node):
         self.state_pub = self.create_publisher(Odometry, "state", 10)
         
         self.params = params
+        self.err_i = np.zeros(3)
 
     def __call__(self, state: PIDState, target: PIDState) -> np.ndarray:
         # position control
@@ -68,8 +69,10 @@ class PIDController(rclpy.node.Node):
         angle_err = geom.vee(R_e - R_e.T)
         # print("angle_desire", print_arr(tf3d.euler.mat2euler(R_d)), "angle", print_arr(tf3d.euler.mat2euler(Q)), "angle_err", print_arr(angle_err))
         # generate desired angular velocity
-        omega_d = -self.params.Kp_att * angle_err
+        omega_d = -self.params.Kp_att * angle_err - 0.2 * self.err_i
         omega_d = np.clip(omega_d, -self.params.max_omega, self.params.max_omega)
+
+        self.err_i += angle_err / 50.0
 
         msg = Vector3Stamped()
         msg.header = Header()
@@ -83,7 +86,7 @@ class PIDController(rclpy.node.Node):
         msg.pose.pose.position = np2point(state.pos)
         msg.pose.pose.orientation = np2quat(state.quat)
         msg.twist.twist.linear = np2vec3(state.vel)
-        msg.twist.twist.angular = np2vec3(state.omega/np.pi*180)
+        msg.twist.twist.angular = np2vec3(state.omega)
         self.state_pub.publish(msg)
         
         msg = Odometry()
@@ -92,7 +95,7 @@ class PIDController(rclpy.node.Node):
         msg.pose.pose.position = np2point(target.pos)
         msg.pose.pose.orientation = np2quat(target.quat)
         msg.twist.twist.linear = np2vec3(target.vel)
-        msg.twist.twist.angular = np2vec3(target.omega/np.pi*180)
+        msg.twist.twist.angular = np2vec3(target.omega)
         self.target_pub.publish(msg)
 
         # generate action

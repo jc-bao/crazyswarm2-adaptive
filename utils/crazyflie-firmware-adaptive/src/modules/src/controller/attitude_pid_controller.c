@@ -144,7 +144,7 @@ void attitudeControllerCorrectRatePID(
        float rollRateActual, float pitchRateActual, float yawRateActual,
        float rollRateDesired, float pitchRateDesired, float yawRateDesired)
 {
-  DEBUG_PRINT("attitudeControllerCorrectRatePID\n");
+//   DEBUG_PRINT("attitudeControllerCorrectRatePID\n");
   pidSetDesired(&pidRollRate, rollRateDesired);
   rollOutput = saturateSignedInt16(pidUpdate(&pidRollRate, rollRateActual, true));
 
@@ -161,7 +161,7 @@ void attitudeControllerCorrectAttitudePID(
        float eulerRollDesired, float eulerPitchDesired, float eulerYawDesired,
        float* rollRateDesired, float* pitchRateDesired, float* yawRateDesired)
 {
-  DEBUG_PRINT("attitudeControllerCorrectAttitudePID\n");
+//   DEBUG_PRINT("attitudeControllerCorrectAttitudePID\n");
   pidSetDesired(&pidRoll, eulerRollDesired);
   *rollRateDesired = pidUpdate(&pidRoll, eulerRollActual, true);
 

@@ -468,13 +468,13 @@ public:
 private:
   void cmd_full_state_changed(const crazyflie_interfaces::msg::FullState::SharedPtr msg)
   {
-    printf("cmd_full_state_changed\n");
-    RCLCPP_INFO(logger_, "[cmd_full_state_changed] x: %f, y: %f, z: %f, vx: %f, vy: %f, vz: %f, ax: %f, ay: %f, az: %f, qx: %f, qy: %f, qz: %f, qw: %f, rollRate: %f, pitchRate: %f, yawRate: %f",
-                msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
-                msg->twist.linear.x, msg->twist.linear.y, msg->twist.linear.z,
-                msg->acc.x, msg->acc.y, msg->acc.z,
-                msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w,
-                msg->twist.angular.x, msg->twist.angular.y, msg->twist.angular.z);
+    // printf("cmd_full_state_changed\n");
+    // RCLCPP_INFO(logger_, "[cmd_full_state_changed] x: %f, y: %f, z: %f, vx: %f, vy: %f, vz: %f, ax: %f, ay: %f, az: %f, qx: %f, qy: %f, qz: %f, qw: %f, rollRate: %f, pitchRate: %f, yawRate: %f",
+    //             msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
+    //             msg->twist.linear.x, msg->twist.linear.y, msg->twist.linear.z,
+    //             msg->acc.x, msg->acc.y, msg->acc.z,
+    //             msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z, msg->pose.orientation.w,
+    //             msg->twist.angular.x, msg->twist.angular.y, msg->twist.angular.z);
     float x = msg->pose.position.x;
     float y = msg->pose.position.y;
     float z = msg->pose.position.z;

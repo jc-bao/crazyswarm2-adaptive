@@ -60,7 +60,7 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
                                          const state_t *state,
                                          const uint32_t tick)
 {
-  DEBUG_PRINT("controllerPid\n");
+//   DEBUG_PRINT("controllerPid\n");
   control->controlMode = controlModeLegacy;
 
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
