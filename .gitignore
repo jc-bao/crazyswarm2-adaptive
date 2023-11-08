@@ -1,6 +1,7 @@
 devel/
 logs/
 log/
+cflog/
 build/
 install/
 bin/

@@ -69,7 +69,7 @@ class PIDController(rclpy.node.Node):
         angle_err = geom.vee(R_e - R_e.T)
         # print("angle_desire", print_arr(tf3d.euler.mat2euler(R_d)), "angle", print_arr(tf3d.euler.mat2euler(Q)), "angle_err", print_arr(angle_err))
         # generate desired angular velocity
-        omega_d = -self.params.Kp_att * angle_err - 0.2 * self.err_i
+        omega_d = -self.params.Kp_att * angle_err - 0.30 * self.err_i
         omega_d = np.clip(omega_d, -self.params.max_omega, self.params.max_omega)
 
         self.err_i += angle_err / 50.0

@@ -20,7 +20,7 @@ class Crazyflie:
         np.set_printoptions(precision=3, suppress=True)
         
         # parameters
-        self.world_center = np.array([0.5, 0.0, 1.5])
+        self.world_center = np.array([0.0, 0.0, 1.0])
         self.mass = 0.027
         self.g = 9.81
         self.command_timelimit = 10.0
@@ -61,8 +61,8 @@ class Crazyflie:
             m=self.mass, 
             g=self.g, max_thrust=2.0, 
             max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
-            Kp=np.array([1.0, 1.0, 1.0])*2.0, 
-            Kd=np.array([1.0, 1.0, 1.0])*2.0, 
+            Kp=np.array([1.0, 1.0, 1.0])*0.1, 
+            Kd=np.array([1.0, 1.0, 1.0])*0.3, 
             Kp_att=np.array([1.0, 1.0, 1.0])*0.05)
         
         self.pos_pid = PIDController(self.pos_pid_param)
@@ -104,6 +104,13 @@ class Crazyflie:
                                 rotation=np2quat(np.array([0.0, 0.0, 0.0, 1.0]))))
         self.static_tf_publisher.sendTransform(static_transformStamped)        
 
+
+    def enable_logging(self):  
+        print(self.cf_name)                  
+        self.cf.setParam('usd.logging', 1)
+
+    def disable_logging(self):
+        self.cf.setParam('usd.logging', 0)
 
     def pose_callback_cf(self, pose_msg:PoseStamped):
         pos = pose_msg.pose.position
@@ -292,15 +299,22 @@ class Crazyflie:
         # takeoff trajectory
         target_point = current_point.copy()
         target_point[2] += 1.0
-        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 100.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 100.0).poses
+        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 50.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 50.0).poses
 
         # landing trajectory
         target_point = current_point.copy()
         current_point = traj_xyz[-1].copy()
-        landing_traj_poses = line_traj(self.rate, current_point, target_point, 10.0).poses
-
+        landing_traj_poses = line_traj(self.rate, current_point, target_point, 50.0).poses
 
         traj.poses = takeoff_traj_poses + traj.poses + landing_traj_poses
+
+        # debug: only takeoff and landing
+        current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
+        current_point = np.array([current_point.x, current_point.y, current_point.z])
+        target_point = current_point.copy()
+        target_point[2] += 1.0
+        traj.poses = line_traj(self.rate, current_point, target_point, 50.0).poses + line_traj(self.rate, target_point, current_point, 50.0).poses
+        
 
         return traj
 
@@ -310,20 +324,28 @@ def main():
 
     cfctl = Crazyflie()
 
-    print('reset...')
-    cfctl.reset()
+    cfctl.enable_logging()
 
-    print('take off')
-    while cfctl.step_cnt < len(cfctl.traj.poses):
-    # while cfctl.step_cnt < 10:
-        action = cfctl.pid_controller() * 1.0
-        cfctl.step(action)
+    try:
+        print('reset...')
+        cfctl.reset()
 
-    # stop
-    cfctl.step(np.array([0.0, 0.0, 0.0, 0.0]))
+        print('take off')
+        while cfctl.step_cnt < len(cfctl.traj.poses) and rclpy.ok():
+        # while cfctl.step_cnt < 10:
+            action = cfctl.pid_controller() * 1.0
+            cfctl.step(action)
 
+    except KeyboardInterrupt:
+        print('KeyboardInterrupt')
+    
+    finally:
+        cfctl.disable_logging()
+        cfctl.set_attirate(np.zeros(3), 0.0)
+        # stop
+        print('stop')
 
-    rclpy.shutdown()
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
