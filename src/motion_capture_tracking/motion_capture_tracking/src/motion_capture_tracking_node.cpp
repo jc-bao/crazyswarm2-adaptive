@@ -16,7 +16,9 @@
 
 void logWarn(rclcpp::Logger logger, const std::string &msg)
 {
-    RCLCPP_WARN(logger, "%s", msg.c_str());
+    // RCLCPP_WARN(logger, "%s", msg.c_str());
+    auto steady_clock = rclcpp::Clock(RCL_STEADY_TIME);
+    RCLCPP_WARN_THROTTLE(logger, steady_clock, 500, "%s", msg.c_str());
 }
 
 std::set<std::string> extract_names(
@@ -258,7 +260,8 @@ int main(int argc, char **argv)
             else
             {
                 std::chrono::duration<double> elapsedSeconds = chrono_now - rigidBody.lastValidTime();
-                RCLCPP_WARN(node->get_logger(), "No updated pose for %s for %f s.", rigidBody.name().c_str(), elapsedSeconds.count());
+                // RCLCPP_WARN(node->get_logger(), "No updated pose for %s for %f s.", rigidBody.name().c_str(), elapsedSeconds.count());
+                RCLCPP_WARN_THROTTLE(node->get_logger(), *node->get_clock(), 500, "No updated pose for %s for %f s.", rigidBody.name().c_str(), elapsedSeconds.count());
             }
         }
 

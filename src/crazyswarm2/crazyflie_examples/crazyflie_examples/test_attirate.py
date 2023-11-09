@@ -61,9 +61,9 @@ class Crazyflie:
             m=self.mass, 
             g=self.g, max_thrust=2.0, 
             max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
-            Kp=np.array([1.0, 1.0, 1.0])*0.1, 
-            Kd=np.array([1.0, 1.0, 1.0])*0.3, 
-            Kp_att=np.array([1.0, 1.0, 1.0])*0.05)
+            Kp=np.array([1.0, 1.0, 0.5])*0.02, 
+            Kd=np.array([2.0, 2.0, 2.0])*0.02, 
+            Kp_att=np.array([1.0, 1.0, 1.0])*0.03)
         
         self.pos_pid = PIDController(self.pos_pid_param)
 
@@ -102,7 +102,8 @@ class Crazyflie:
             child_frame_id="map", 
             transform=Transform(translation=np2vec3(self.world_center), 
                                 rotation=np2quat(np.array([0.0, 0.0, 0.0, 1.0]))))
-        self.static_tf_publisher.sendTransform(static_transformStamped)        
+        self.static_tf_publisher.sendTransform(static_transformStamped) 
+       
 
 
     def enable_logging(self):  
@@ -235,34 +236,11 @@ class Crazyflie:
 
     def emergency(self, obs):
         # stop
-        
-        self.traj.clear()
-        current_point = self.drone_state.pos.copy()
-        target_point = current_point.copy()
-        target_point[2] = 0.0
-        current_point = PoseStamped(
-            header=Header(frame_id="world"), 
-            pose=Pose(position=np2point(current_point), 
-                      orientation=np2quat(self.drone_state.quat)))
-        target_point = PoseStamped(
-            header=Header(frame_id="world"), 
-            pose=Pose(position=np2point(target_point), 
-                      orientation=np2quat(self.drone_state.quat)))
-        transform = self.tf_buffer.lookup_transform("map", "world", rclpy.time.Time())
-        current_point = do_transform_pose(current_point.pose, transform).position
-        target_point = do_transform_pose(target_point.pose, transform).position
-        landing_traj_poses = line_traj(self.rate, current_point, target_point, 3.0).poses
-        self.traj.poses = landing_traj_poses
-        self.traj.header.stamp = rclpy.time.Time().to_msg()
-        self.traj_pub.publish(self.traj)
-        
-        print('emergency, landing...')
-
-        return        
-        # self.reset()
-        # for cf in self.allcfs.crazyflies:
-        #     cf.emergency()
-        # raise ValueError
+             
+        self.reset()
+        for cf in self.allcfs.crazyflies:
+            cf.emergency()
+        raise ValueError
     
     def pid_controller(self):
         thrust, roll_rate, pitch_rate, yaw_rate = self.pos_pid(self.drone_state, self.drone_target)
@@ -298,7 +276,7 @@ class Crazyflie:
 
         # takeoff trajectory
         target_point = current_point.copy()
-        target_point[2] += 1.0
+        target_point[2] += 0.3
         takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 50.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 50.0).poses
 
         # landing trajectory
@@ -313,6 +291,8 @@ class Crazyflie:
         current_point = np.array([current_point.x, current_point.y, current_point.z])
         target_point = current_point.copy()
         target_point[2] += 1.0
+        print("current_point", current_point)
+        print("target_point", target_point)
         traj.poses = line_traj(self.rate, current_point, target_point, 50.0).poses + line_traj(self.rate, target_point, current_point, 50.0).poses
         
 
@@ -335,6 +315,7 @@ def main():
         # while cfctl.step_cnt < 10:
             action = cfctl.pid_controller() * 1.0
             cfctl.step(action)
+
 
     except KeyboardInterrupt:
         print('KeyboardInterrupt')

@@ -69,7 +69,7 @@ class PIDController(rclpy.node.Node):
         angle_err = geom.vee(R_e - R_e.T)
         # print("angle_desire", print_arr(tf3d.euler.mat2euler(R_d)), "angle", print_arr(tf3d.euler.mat2euler(Q)), "angle_err", print_arr(angle_err))
         # generate desired angular velocity
-        omega_d = -self.params.Kp_att * angle_err - 0.30 * self.err_i
+        omega_d = -self.params.Kp_att * angle_err - 0.0 * self.err_i
         omega_d = np.clip(omega_d, -self.params.max_omega, self.params.max_omega)
 
         self.err_i += angle_err / 50.0
@@ -95,7 +95,7 @@ class PIDController(rclpy.node.Node):
         msg.pose.pose.position = np2point(target.pos)
         msg.pose.pose.orientation = np2quat(target.quat)
         msg.twist.twist.linear = np2vec3(target.vel)
-        msg.twist.twist.angular = np2vec3(target.omega)
+        msg.twist.twist.angular = np2vec3(omega_d)
         self.target_pub.publish(msg)
 
         # generate action

@@ -61,8 +61,16 @@ static float tau_rp = 0.25;
 static float mixing_factor = 1.0;
 
 // time constant of rotational rate control
-static float tau_rp_rate = 0.015;
+static float tau_rp_rate = 0.0075;
 static float tau_yaw_rate = 0.0075;
+
+static float ki_rp_rate = 60.0;
+static float ki_yaw_rate = 60.0;
+
+static float last_err[3] = {0.0f, 0.0f, 0.0f};
+static float omegaErr[3] = {0.0f, 0.0f, 0.0f};
+static float omegaDot[3] = {0.0f, 0.0f, 0.0f};
+
 
 // minimum and maximum thrusts
 // static float coll_min = 1;
@@ -77,6 +85,9 @@ static float omega_rp_max = 30;
 static float omega_yaw_max = 10;
 // static float heuristic_rp = 12;
 // static float heuristic_yaw = 5;
+
+static float omega_rp_i_max = 30.0;
+static float omega_yaw_i_max = 30.0;
 
 
 // Struct for logging position information
@@ -104,6 +115,7 @@ void controllerBrescianini(control_t *control,
   static float control_omega[3];
   static struct vec control_torque;
   static float control_thrust;
+
 
 //   DEBUG_PRINT("controllerBrescianini\n");
 
@@ -375,14 +387,18 @@ void controllerBrescianini(control_t *control,
     // }
 
     // scale the commands to satisfy rate constraints
-    float scaling = 1;
-    scaling = fmax(scaling, fabsf(control_omega[0]) / omega_rp_max);
-    scaling = fmax(scaling, fabsf(control_omega[1]) / omega_rp_max);
-    scaling = fmax(scaling, fabsf(control_omega[2]) / omega_yaw_max);
+    // float scaling = 1;
+    // scaling = fmax(scaling, fabsf(control_omega[0]) / omega_rp_max);
+    // scaling = fmax(scaling, fabsf(control_omega[1]) / omega_rp_max);
+    // scaling = fmax(scaling, fabsf(control_omega[2]) / omega_yaw_max);
 
-    control_omega[0] /= scaling;
-    control_omega[1] /= scaling;
-    control_omega[2] /= scaling;
+    // control_omega[0] /= scaling;
+    // control_omega[1] /= scaling;
+    // control_omega[2] /= scaling;
+
+    control_omega[0] = constrain(control_omega[0], -omega_rp_max, omega_rp_max);
+    control_omega[1] = constrain(control_omega[1], -omega_rp_max, omega_rp_max);
+    control_omega[2] = constrain(control_omega[2], -omega_yaw_max, omega_yaw_max);
     // Chaoyi
     control_thrust = setpoint->acceleration.z;
   }
@@ -394,12 +410,26 @@ void controllerBrescianini(control_t *control,
     control->torque[2] =  0.0f;
   } else {
     // control the body torques
-    struct vec omegaErr = mkvec((control_omega[0] - omega[0])/tau_rp_rate,
-                        (control_omega[1] - omega[1])/tau_rp_rate,
-                        (control_omega[2] - omega[2])/tau_yaw_rate);
+    omegaErr[0] = control_omega[0] - omega[0];
+    omegaErr[1] = control_omega[1] - omega[1];
+    omegaErr[2] = control_omega[2] - omega[2];
+
+    omegaDot[0] = omegaErr[0] / tau_rp_rate + last_err[0] * ki_rp_rate;
+    omegaDot[1] = omegaErr[1] / tau_rp_rate + last_err[1] * ki_rp_rate;
+    omegaDot[2] = omegaErr[2] / tau_yaw_rate + last_err[2] * ki_yaw_rate;
+
+    last_err[0] += omegaErr[0] * (1.0f/UPDATE_RATE);
+    last_err[1] += omegaErr[1] * (1.0f/UPDATE_RATE);
+    last_err[2] += omegaErr[2] * (1.0f/UPDATE_RATE);
+
+    last_err[0] = constrain(last_err[0], -omega_rp_i_max, omega_rp_i_max);
+    last_err[1] = constrain(last_err[1], -omega_rp_i_max, omega_rp_i_max);
+    last_err[2] = constrain(last_err[2], -omega_yaw_i_max, omega_yaw_i_max);
+
+
 
     // update the commanded body torques based on the current error in body rates
-    control_torque = mvmul(CRAZYFLIE_INERTIA, omegaErr);
+    control_torque = mvmul(CRAZYFLIE_INERTIA, mkvec(omegaDot[0], omegaDot[1], omegaDot[2]));
 
     control->thrustSi = control_thrust * CF_MASS; // force to provide control_thrust
     control->torqueX = control_torque.x;
@@ -423,4 +453,19 @@ PARAM_ADD(PARAM_FLOAT, zeta_z, &zeta_z)
 PARAM_ADD(PARAM_FLOAT, tau_rp, &tau_rp)
 PARAM_ADD(PARAM_FLOAT, mixing_factor, &mixing_factor)
 PARAM_ADD(PARAM_FLOAT, coll_fairness, &thrust_reduction_fairness)
+PARAM_ADD(PARAM_FLOAT, ki_rp_rate, &ki_rp_rate)
+PARAM_ADD(PARAM_FLOAT, ki_yaw_rate, &ki_yaw_rate)
 PARAM_GROUP_STOP(ctrlAtt)
+
+LOG_GROUP_START(ctrlrate)
+LOG_ADD(LOG_FLOAT, omegaErr_x, &omegaErr[0])
+LOG_ADD(LOG_FLOAT, omegaErr_y, &omegaErr[1])
+LOG_ADD(LOG_FLOAT, omegaErr_z, &omegaErr[2])
+LOG_ADD(LOG_FLOAT, omegaDot_x, &omegaDot[0])
+LOG_ADD(LOG_FLOAT, omegaDot_y, &omegaDot[1])
+LOG_ADD(LOG_FLOAT, omegaDot_z, &omegaDot[2])
+LOG_ADD(LOG_FLOAT, last_err_x, &last_err[0])
+LOG_ADD(LOG_FLOAT, last_err_y, &last_err[1])
+LOG_ADD(LOG_FLOAT, last_err_z, &last_err[2])
+LOG_GROUP_STOP(ctrlrate)
+
