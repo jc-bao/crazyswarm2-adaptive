@@ -86,8 +86,8 @@ static float omega_yaw_max = 10;
 // static float heuristic_rp = 12;
 // static float heuristic_yaw = 5;
 
-static float omega_rp_i_max = 30.0;
-static float omega_yaw_i_max = 30.0;
+static float omega_rp_i_max = 100.0;
+static float omega_yaw_i_max = 100.0;
 
 
 // Struct for logging position information
@@ -457,6 +457,8 @@ PARAM_ADD(PARAM_FLOAT, ki_rp_rate, &ki_rp_rate)
 PARAM_ADD(PARAM_FLOAT, ki_yaw_rate, &ki_yaw_rate)
 PARAM_ADD(PARAM_FLOAT, kp_rp_rate, &kp_rp_rate)
 PARAM_ADD(PARAM_FLOAT, kp_yaw_rate, &kp_yaw_rate)
+PARAM_ADD(PARAM_FLOAT, omega_rp_i_max, &omega_rp_i_max)
+PARAM_ADD(PARAM_FLOAT, omega_yaw_i_max, &omega_yaw_i_max)
 PARAM_GROUP_STOP(ctrlAtt)
 
 LOG_GROUP_START(ctrlrate)

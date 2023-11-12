@@ -6,6 +6,12 @@ robots:
     # uri: radio://0/80/2M/E7E7E7E702
     initial_position: [0.0, 0.0, 0.0]
     type: cf21  # see robot_types
+  cf2:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E702
+    # uri: radio://0/80/2M/E7E7E7E702
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
 # Definition of the various robot types
 robot_types:
   cf21:
@@ -16,8 +22,8 @@ robot_types:
       dynamics: default
     big_quad: false
     battery:
-      voltage_warning: 3.8  # V
-      voltage_critical: 3.7 # V
+      voltage_warning: 4.0  # V
+      voltage_critical: 3.9 # V
     firmware_params:
       ctrlMel:
         kR_xy: 1 #300
@@ -55,6 +61,13 @@ all:
       extQuatStdDev: 0.5e-1
     kalman:
       resetEstimation: 1
+    ctrlAtt:
+      kp_rp_rate: 220.0
+      ki_rp_rate: 45.0 #45.0 works good for 3 battery
+      kp_yaw_rate: 70.0
+      ki_yaw_rate: 15.0
+      omega_yaw_i_max: 30.0
+      omega_rp_i_max: 2000.0
   broadcasts:
     num_repeats: 15 # number of times broadcast commands are repeated
     delay_between_repeats_ms: 1 # delay in milliseconds between individual repeats
