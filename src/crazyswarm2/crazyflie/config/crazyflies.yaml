@@ -62,12 +62,12 @@ all:
     kalman:
       resetEstimation: 1
     ctrlAtt:
-      kp_rp_rate: 220.0
-      ki_rp_rate: 45.0 #45.0 works good for 3 battery
+      kp_rp_rate: 150.0   # 150.0 works good for hover
+      ki_rp_rate: 20.0    # 20.0 works good for hover
       kp_yaw_rate: 70.0
       ki_yaw_rate: 15.0
       omega_yaw_i_max: 30.0
-      omega_rp_i_max: 2000.0
+      omega_rp_i_max: 500.0
   broadcasts:
     num_repeats: 15 # number of times broadcast commands are repeated
     delay_between_repeats_ms: 1 # delay in milliseconds between individual repeats

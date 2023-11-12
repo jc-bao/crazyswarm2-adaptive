@@ -61,11 +61,11 @@ class Crazyflie:
             m=self.mass, 
             g=self.g, max_thrust=2.0, 
             max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
-            Kp=np.array([1.0, 1.0, 1.0])*1.5, 
-            Kd=np.array([1.0, 1.0, 1.5])*1.5, 
-            Ki=np.array([1.0, 1.0, 16.0])*0.06,
-            Kp_att=np.array([1.0, 1.0, 1.0])*0.085,
-            Ki_att=np.array([1.0, 1.0, 1.0])*0.008,
+            Kp=np.array([1.0, 1.0, 1.0])*2.0, 
+            Kd=np.array([1.0, 1.0, 1.5])*2.0, 
+            Ki=np.array([1.0, 1.0, 10.0])*0.06,
+            Kp_att=np.array([1.0, 1.0, 1.0])*0.040,
+            Ki_att=np.array([1.0, 1.0, 1.0])*0.004,
             dt = 1.0/self.rate)
         
         self.pos_pid = PIDController(self.pos_pid_param)
@@ -256,12 +256,12 @@ class Crazyflie:
         traj = Path()
         traj.header.frame_id = "map"
         
-        base_w = 2 * np.pi / 4.0
-        t = np.arange(0, int(0.03*self.rate)) / self.rate
+        base_w = 2 * np.pi / 8.0
+        t = np.arange(0, int(5.0*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((len(t), 3))
         traj_vxyz = np.zeros((len(t), 3))
-        A = np.array([0.6, 0.6, 0.0])
+        A = np.array([0.5, 0.5, 0.0])
         w = np.array([base_w, base_w, base_w*2.0])
         phase = np.array([np.pi/2,0.0,np.pi])
         traj_xyz = A * np.sin(t*w+phase)
@@ -279,27 +279,32 @@ class Crazyflie:
 
         # takeoff trajectory
         target_point = current_point.copy()
-        target_point[2] += 0.3
-        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 50.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 50.0).poses
+        target_point[2] += 0.5
+        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 5.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 5.0).poses
 
         # landing trajectory
         target_point = current_point.copy()
+        target_point[2] += 0.5
         current_point = traj_xyz[-1].copy()
-        landing_traj_poses = line_traj(self.rate, current_point, target_point, 50.0).poses
+        landing_traj_poses = line_traj(self.rate, current_point, target_point, 7.0).poses
 
-        traj.poses = takeoff_traj_poses + traj.poses + landing_traj_poses
+        current_point = target_point.copy() # when close to the land, the drone is not stable
+        target_point[2] -= 0.5
 
-        # debug: only takeoff and landing
-        current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
-        current_point = np.array([current_point.x, current_point.y, current_point.z])
-        target_point = current_point.copy()
-        target_point[2] += 1.0
-        target_point1 = target_point.copy()
-        target_point1[0] += 0.5
+        traj.poses = takeoff_traj_poses + traj.poses + landing_traj_poses + line_traj(self.rate, current_point, target_point, 1.0).poses
+
+        # # debug: only takeoff and landing
+        # current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
+        # current_point = np.array([current_point.x, current_point.y, current_point.z])
+        # target_point = current_point.copy()
+        # target_point[2] += 1.0
+        # target_point[0] += 0.5
+        # target_point1 = target_point.copy()
+        # target_point1[0] += 0.5
         
-        print("current_point", current_point)
-        print("target_point", target_point)
-        traj.poses = line_traj(self.rate, current_point, target_point, 10.0).poses + line_traj(self.rate, target_point, current_point, 10.0).poses
+        # print("current_point", current_point)
+        # print("target_point", target_point)
+        # traj.poses = line_traj(self.rate, current_point, target_point, 10.0).poses + line_traj(self.rate, target_point, current_point, 10.0).poses
         
 
         return traj
