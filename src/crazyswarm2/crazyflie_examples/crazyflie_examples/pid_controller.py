@@ -8,6 +8,12 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Header
 from .util import np2vec3, np2point, np2quat
 
+import time
+import pickle
+
+mmddhhmmss = time.strftime("%m%d%H%M%S", time.localtime())
+log_path = f"/home/pcy/Research/code/crazyswarm2-adaptive/cflog/att_pid_{mmddhhmmss}.txt"
+
 
 @dataclass
 class PIDParam:
@@ -18,7 +24,11 @@ class PIDParam:
 
     Kp: np.ndarray
     Kd: np.ndarray
+    Ki: np.ndarray
     Kp_att: np.ndarray
+    Ki_att: np.ndarray
+
+    dt: float
 
 
 @dataclass
@@ -42,6 +52,25 @@ class PIDController(rclpy.node.Node):
         
         self.params = params
         self.err_i = np.zeros(3)
+        self.err_i_att = np.zeros(3)
+
+        self.log_path = log_path
+        self.log = {
+            "pos_err": [],
+            "vel_err": [],
+            "err_i": [],
+            "angle_err": [],
+            "err_i_att": [],
+            "time": [],
+            "pos_cur": [],
+            "vel_cur": [],
+            "omega_cur": [],
+            "ang_cur": [],
+            "pos_tar": [],
+            "vel_tar": [],
+            "omega_tar": [],
+            "ang_tar": []
+        }
 
     def __call__(self, state: PIDState, target: PIDState) -> np.ndarray:
         # position control
@@ -51,8 +80,12 @@ class PIDController(rclpy.node.Node):
             np.array([0.0, 0.0, self.params.g])
             - self.params.Kp * (state.pos - target.pos)
             - self.params.Kd * (state.vel - target.vel)
+            - self.params.Ki * self.err_i
             + target.acc
         )
+
+        self.err_i += (state.pos - target.pos) * self.params.dt
+
         thrust = (Q.T @ f_d)[2]
         thrust = np.clip(thrust, 0.0, self.params.max_thrust)
         # print("f_d", f_d, "thrust", thrust)
@@ -69,10 +102,29 @@ class PIDController(rclpy.node.Node):
         angle_err = geom.vee(R_e - R_e.T)
         # print("angle_desire", print_arr(tf3d.euler.mat2euler(R_d)), "angle", print_arr(tf3d.euler.mat2euler(Q)), "angle_err", print_arr(angle_err))
         # generate desired angular velocity
-        omega_d = -self.params.Kp_att * angle_err - 0.0 * self.err_i
+        omega_d = -self.params.Kp_att * angle_err - self.params.Ki_att * self.err_i_att
         omega_d = np.clip(omega_d, -self.params.max_omega, self.params.max_omega)
 
-        self.err_i += angle_err / 50.0
+        self.err_i_att += angle_err * self.params.dt
+        print("angle_err", self.params.Kp_att * angle_err, "omega_d", omega_d, "err_i_att", self.err_i_att * self.params.Ki_att)
+        print("pos_err: ", self.params.Kp * (state.pos - target.pos), "vel_err: ", self.params.Kd * (state.vel - target.vel), "err_i: ", self.err_i * self.params.Ki)
+
+        # log
+        self.log["pos_err"].append(self.params.Kp * (state.pos - target.pos))
+        self.log["vel_err"].append(self.params.Kd * (state.vel - target.vel))
+        self.log["err_i"].append(self.err_i * self.params.Ki)
+        self.log["angle_err"].append(self.params.Kp_att * angle_err)
+        self.log["err_i_att"].append(self.err_i_att * self.params.Ki_att)
+        self.log["time"].append(time.time())
+        self.log["pos_cur"].append(state.pos)
+        self.log["vel_cur"].append(state.vel)
+        self.log["omega_cur"].append(state.omega)
+        self.log["ang_cur"].append(tf3d.euler.mat2euler(Q))
+        self.log["pos_tar"].append(target.pos)
+        self.log["vel_tar"].append(target.vel)
+        self.log["omega_tar"].append(target.omega)
+        self.log["ang_tar"].append(tf3d.euler.mat2euler(R_d))
+
 
         msg = Vector3Stamped()
         msg.header = Header()
@@ -100,3 +152,9 @@ class PIDController(rclpy.node.Node):
 
         # generate action
         return np.concatenate([np.array([thrust]), omega_d])
+
+
+    def save_log(self):
+        with open(self.log_path, "wb") as f:
+            pickle.dump(self.log, f)
+        print("log saved to", self.log_path)

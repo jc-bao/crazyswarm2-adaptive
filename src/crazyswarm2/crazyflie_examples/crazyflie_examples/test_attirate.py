@@ -61,9 +61,12 @@ class Crazyflie:
             m=self.mass, 
             g=self.g, max_thrust=2.0, 
             max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
-            Kp=np.array([1.0, 1.0, 0.5])*0.02, 
-            Kd=np.array([2.0, 2.0, 2.0])*0.02, 
-            Kp_att=np.array([1.0, 1.0, 1.0])*0.03)
+            Kp=np.array([1.0, 1.0, 1.0])*1.5, 
+            Kd=np.array([1.0, 1.0, 1.5])*1.5, 
+            Ki=np.array([1.0, 1.0, 16.0])*0.06,
+            Kp_att=np.array([1.0, 1.0, 1.0])*0.085,
+            Ki_att=np.array([1.0, 1.0, 1.0])*0.008,
+            dt = 1.0/self.rate)
         
         self.pos_pid = PIDController(self.pos_pid_param)
 
@@ -159,7 +162,7 @@ class Crazyflie:
         
         # self.allcfs.get_logger().info(f"pos: {self.drone_state.pos}, quat: {self.drone_state.quat}, vel: {self.drone_state.vel}, omega: {self.drone_state.omega}", throttle_duration_sec=1.0)
     
-    def get_drone_target(self, omega_target:np.ndarray):
+    def get_drone_target(self):
         # update target
         try:
             pos_in_map = self.traj.poses[self.step_cnt]
@@ -173,7 +176,7 @@ class Crazyflie:
         pos = np.array([pos.x, pos.y, pos.z], dtype=np.float32)
         # calculate velocity using finite difference, change to differential flatness later
         self.drone_target.vel = (pos - self.drone_target.pos) * self.rate
-        self.drone_target.omega = omega_target
+        self.drone_target.omega = np.zeros(3)
         self.drone_target.pos = pos
         self.drone_target.quat = np.array([0.0, 0.0, 0.0, 1.0])
         
@@ -224,7 +227,7 @@ class Crazyflie:
 
         
         # observation
-        self.get_drone_target(omega_target)
+        # self.get_drone_target(omega_target)
         
 
         # if np.any(self.xyz_drone > (self.xyz_max + self.world_center)) or np.any(self.xyz_drone < (self.xyz_min + self.world_center)):
@@ -291,9 +294,12 @@ class Crazyflie:
         current_point = np.array([current_point.x, current_point.y, current_point.z])
         target_point = current_point.copy()
         target_point[2] += 1.0
+        target_point1 = target_point.copy()
+        target_point1[0] += 0.5
+        
         print("current_point", current_point)
         print("target_point", target_point)
-        traj.poses = line_traj(self.rate, current_point, target_point, 50.0).poses + line_traj(self.rate, target_point, current_point, 50.0).poses
+        traj.poses = line_traj(self.rate, current_point, target_point, 10.0).poses + line_traj(self.rate, target_point, current_point, 10.0).poses
         
 
         return traj
@@ -313,6 +319,7 @@ def main():
         print('take off')
         while cfctl.step_cnt < len(cfctl.traj.poses) and rclpy.ok():
         # while cfctl.step_cnt < 10:
+            cfctl.get_drone_target()
             action = cfctl.pid_controller() * 1.0
             cfctl.step(action)
 
@@ -322,6 +329,7 @@ def main():
     
     finally:
         cfctl.disable_logging()
+        cfctl.pos_pid.save_log()
         cfctl.set_attirate(np.zeros(3), 0.0)
         # stop
         print('stop')

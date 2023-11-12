@@ -61,11 +61,11 @@ static float tau_rp = 0.25;
 static float mixing_factor = 1.0;
 
 // time constant of rotational rate control
-static float tau_rp_rate = 0.0075;
-static float tau_yaw_rate = 0.0075;
+static float kp_rp_rate = 60.0;
+static float kp_yaw_rate = 60.0;
 
-static float ki_rp_rate = 60.0;
-static float ki_yaw_rate = 60.0;
+static float ki_rp_rate = 5.0;
+static float ki_yaw_rate = 5.0;
 
 static float last_err[3] = {0.0f, 0.0f, 0.0f};
 static float omegaErr[3] = {0.0f, 0.0f, 0.0f};
@@ -414,9 +414,9 @@ void controllerBrescianini(control_t *control,
     omegaErr[1] = control_omega[1] - omega[1];
     omegaErr[2] = control_omega[2] - omega[2];
 
-    omegaDot[0] = omegaErr[0] / tau_rp_rate + last_err[0] * ki_rp_rate;
-    omegaDot[1] = omegaErr[1] / tau_rp_rate + last_err[1] * ki_rp_rate;
-    omegaDot[2] = omegaErr[2] / tau_yaw_rate + last_err[2] * ki_yaw_rate;
+    omegaDot[0] = omegaErr[0] * kp_rp_rate + last_err[0] * ki_rp_rate;
+    omegaDot[1] = omegaErr[1] * kp_rp_rate + last_err[1] * ki_rp_rate;
+    omegaDot[2] = omegaErr[2] * kp_yaw_rate + last_err[2] * ki_yaw_rate;
 
     last_err[0] += omegaErr[0] * (1.0f/UPDATE_RATE);
     last_err[1] += omegaErr[1] * (1.0f/UPDATE_RATE);
@@ -455,6 +455,8 @@ PARAM_ADD(PARAM_FLOAT, mixing_factor, &mixing_factor)
 PARAM_ADD(PARAM_FLOAT, coll_fairness, &thrust_reduction_fairness)
 PARAM_ADD(PARAM_FLOAT, ki_rp_rate, &ki_rp_rate)
 PARAM_ADD(PARAM_FLOAT, ki_yaw_rate, &ki_yaw_rate)
+PARAM_ADD(PARAM_FLOAT, kp_rp_rate, &kp_rp_rate)
+PARAM_ADD(PARAM_FLOAT, kp_yaw_rate, &kp_yaw_rate)
 PARAM_GROUP_STOP(ctrlAtt)
 
 LOG_GROUP_START(ctrlrate)
