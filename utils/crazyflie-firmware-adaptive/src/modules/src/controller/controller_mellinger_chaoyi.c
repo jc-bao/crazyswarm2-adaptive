@@ -53,20 +53,20 @@ static struct mat33 CRAZYFLIE_INERTIA =
       {0.83e-6f, 16.6e-6f, 1.8e-6f},
       {0.72e-6f, 1.8e-6f, 29.3e-6f}}};
 
-static struct vec OMEGA_GAIN = {1.0f, 1.0f, 1.0f};
+// static struct vec OMEGA_GAIN = {1.0f, 1.0f, 1.0f};
 
 
 // minimum and maximum body rates
-static float omega_rp_max = 300;
-static float omega_yaw_max = 100;
-static float heuristic_rp = 12;
-static float heuristic_yaw = 5;
+// static float omega_rp_max = 300;
+// static float omega_yaw_max = 100;
+// static float heuristic_rp = 12;
+// static float heuristic_yaw = 5;
 
 // time constant of rotational rate control
-static float tau_rp_rate = 0.015;
-static float tau_yaw_rate = 0.0075;
+// static float tau_rp_rate = 0.015;
+// static float tau_yaw_rate = 0.0075;
 
-static float dt = 0.002;
+// static float dt = 0.002;
 
 // Global state variable used in the
 // firmware as the only instance and in bindings
@@ -144,7 +144,7 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
                                          const uint32_t tick)
 {
   static float control_omega[3];
-  static struct vec control_torque;
+//   static struct vec control_torque;
   static float control_thrust;
 
 //   DEBUG_PRINT("controllerMellinger\n");
@@ -440,6 +440,8 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
     //                     (control_omega[1] - omega[1])/tau_rp_rate,
     //                     (control_omega[2] - omega[2])/tau_yaw_rate);
 
+    struct vec omega_vec = mkvec(omega[0], omega[1], omega[2]);
+
     struct vec omega_err = mkvec((control_omega[0] - omega[0]), 
                         (control_omega[1] - omega[1]),
                         (control_omega[2] - omega[2]));
@@ -450,7 +452,7 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
 
     struct vec alpha_desired = veltmul(omega_err, omega_gain);
 
-    struct vec control_torque = mvmul(CRAZYFLIE_INERTIA, alpha_desired);
+    struct vec control_torque = vadd(mvmul(CRAZYFLIE_INERTIA, alpha_desired), vcross(omega_vec, mvmul(CRAZYFLIE_INERTIA, omega_vec)));
 
     // update the commanded body torques based on the current error in body rates
     // omegaErr = veltmul(omegaErr, omega_gain);
@@ -462,6 +464,8 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
     control->torqueX = control_torque.x;
     control->torqueY = control_torque.y;
     control->torqueZ = control_torque.z;
+
+    // DEBUG_PRINT("omega_d: %.4f %.4f %.4f, omega: %.4f %.4f %.4f\n", control_omega[0], control_omega[1], control_omega[2], omega[0], omega[1], omega[2]);
 
     // printf("thrust: %.4f, torqueX: %.4f, torqueY: %.4f, torqueZ: %.4f\n", control->thrustSi, control->torqueX, control->torqueY, control->torqueZ);    
   }

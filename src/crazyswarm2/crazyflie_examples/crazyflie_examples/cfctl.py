@@ -1,6 +1,5 @@
 from crazyflie_py import Crazyswarm
 import numpy as np
-from icecream import ic
 import tf2_ros
 import transforms3d as tf3d
 from std_msgs.msg import Float32MultiArray

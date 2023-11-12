@@ -23,6 +23,7 @@ class TrajectoryPolynomialPiece:
         self.poly_yaw = poly_yaw
         self.duration = duration
 
+
 def copy_svec(v):
     return firm.mkvec(v.x, v.y, v.z)
 
@@ -60,16 +61,19 @@ def bodyrate_controller(control, setpoint, sensors, state, tick):
 
     return control
 
+
 def torque2rpm(torque, thrust):
-    arm_length = 0.046 # m
+    arm_length = 0.046  # m
     arm = 0.707106781 * arm_length
-    t2t = 0.006 # thrust-to-torque ratio
-    B0 = np.array([
-        [1, 1, 1, 1],
-        [-arm, -arm, arm, arm],
-        [-arm, arm, arm, -arm],
-        [-t2t, t2t, -t2t, t2t]
-        ])
+    t2t = 0.006  # thrust-to-torque ratio
+    B0 = np.array(
+        [
+            [1, 1, 1, 1],
+            [-arm, -arm, arm, arm],
+            [-arm, arm, arm, -arm],
+            [-t2t, t2t, -t2t, t2t],
+        ]
+    )
     B0_inv = np.linalg.pinv(B0)
     tau_u = np.array([thrust, torque[0], torque[1], torque[2]])
     force = np.matmul(B0_inv, tau_u)
@@ -80,20 +84,19 @@ def torque2rpm(torque, thrust):
     def force_to_rpm(force):
         a, b, c = 2.55077341e-08, -4.92422570e-05, -1.51910248e-01
         force_in_grams = np.clip(force * 1000.0 / 9.81, 0.0, 1000)
-        rpm = (-b + np.sqrt(b**2 - 4*a*(c-force_in_grams))) / (2*a)
+        rpm = (-b + np.sqrt(b**2 - 4 * a * (c - force_in_grams))) / (2 * a)
         return rpm
-    
+
     def rpm_to_pwm(rpm):
-        a, b = 3.26535711e-01, 3.37495115e+03
-        pwm = 1/a * (rpm - b)
+        a, b = 3.26535711e-01, 3.37495115e03
+        pwm = 1 / a * (rpm - b)
         return pwm
-    
+
     rpm = force_to_rpm(force)
     return rpm
 
 
 class CrazyflieSIL:
-
     # Flight modes.
     MODE_IDLE = 0
     MODE_HIGH_POLY = 1
@@ -101,9 +104,7 @@ class CrazyflieSIL:
     MODE_LOW_POSITION = 3
     MODE_LOW_VELOCITY = 4
 
-
     def __init__(self, name, initialPosition, controller_name, time_func):
-
         # Core.
         self.name = name
         self.groupMask = 0
@@ -133,7 +134,9 @@ class CrazyflieSIL:
         self.state.velocity.y = 0
         self.state.velocity.z = 0
         self.state.attitude.roll = 0
-        self.state.attitude.pitch = -0 # WARNING: this is in the legacy coordinate system
+        self.state.attitude.pitch = (
+            -0
+        )  # WARNING: this is in the legacy coordinate system
         self.state.attitude.yaw = 0
 
         self.sensors = firm.sensorData_t()
@@ -161,7 +164,7 @@ class CrazyflieSIL:
         elif controller_name == "brescianini":
             firm.controllerBrescianiniInit()
             self.controller = firm.controllerBrescianini
-        elif controller_name == 'bodyrate_python':
+        elif controller_name == "bodyrate_python":
             self.controller = bodyrate_controller
         else:
             raise ValueError("Unknown controller {}".format(controller_name))
@@ -169,36 +172,60 @@ class CrazyflieSIL:
     def setGroupMask(self, groupMask):
         self.groupMask = groupMask
 
-    def takeoff(self, targetHeight, duration, groupMask = 0):
+    def takeoff(self, targetHeight, duration, groupMask=0):
         if self._isGroup(groupMask):
             self.mode = CrazyflieSIL.MODE_HIGH_POLY
             targetYaw = 0.0
-            firm.plan_takeoff(self.planner,
+            firm.plan_takeoff(
+                self.planner,
                 self.cmdHl_pos,
-                self.cmdHl_yaw, targetHeight, targetYaw, duration, self.time_func())
+                self.cmdHl_yaw,
+                targetHeight,
+                targetYaw,
+                duration,
+                self.time_func(),
+            )
 
-    def land(self, targetHeight, duration, groupMask = 0):
+    def land(self, targetHeight, duration, groupMask=0):
         if self._isGroup(groupMask):
             self.mode = CrazyflieSIL.MODE_HIGH_POLY
             targetYaw = 0.0
-            firm.plan_land(self.planner,
+            firm.plan_land(
+                self.planner,
                 self.cmdHl_pos,
-                self.cmdHl_yaw, targetHeight, targetYaw, duration, self.time_func())
+                self.cmdHl_yaw,
+                targetHeight,
+                targetYaw,
+                duration,
+                self.time_func(),
+            )
 
     # def stop(self, groupMask = 0):
     #     if self._isGroup(groupMask):
     #         self.mode = CrazyflieSIL.MODE_IDLE
     #         firm.plan_stop(self.planner)
 
-    def goTo(self, goal, yaw, duration, relative = False, groupMask = 0):
+    def goTo(self, goal, yaw, duration, relative=False, groupMask=0):
         if self._isGroup(groupMask):
             if self.mode != CrazyflieSIL.MODE_HIGH_POLY:
                 # We need to update to the latest firmware that has go_to_from.
                 raise ValueError("goTo from low-level modes not yet supported.")
             self.mode = CrazyflieSIL.MODE_HIGH_POLY
-            firm.plan_go_to(self.planner, relative, firm.mkvec(*goal), yaw, duration, self.time_func())
+            firm.plan_go_to(
+                self.planner,
+                relative,
+                firm.mkvec(*goal),
+                yaw,
+                duration,
+                self.time_func(),
+            )
 
-    def uploadTrajectory(self, trajectoryId: int, pieceOffset: int, pieces: list[TrajectoryPolynomialPiece]):
+    def uploadTrajectory(
+        self,
+        trajectoryId: int,
+        pieceOffset: int,
+        pieces: list[TrajectoryPolynomialPiece],
+    ):
         traj = firm.piecewise_traj()
         traj.t_begin = 0
         traj.timescale = 1.0
@@ -215,7 +242,14 @@ class CrazyflieSIL:
                 firm.poly4d_set(fwpiece, 3, coef, piece.poly_yaw[coef])
         self.trajectories[trajectoryId] = traj
 
-    def startTrajectory(self, trajectoryId: int, timescale: float = 1.0, reverse: bool = False, relative: bool = True, groupMask: int = 0):
+    def startTrajectory(
+        self,
+        trajectoryId: int,
+        timescale: float = 1.0,
+        reverse: bool = False,
+        relative: bool = True,
+        groupMask: int = 0,
+    ):
         if self._isGroup(groupMask):
             self.mode = CrazyflieSIL.MODE_HIGH_POLY
             traj = self.trajectories[trajectoryId]
@@ -229,6 +263,19 @@ class CrazyflieSIL:
     #     # high-level commands. This tells it to stop doing that. We don't
     #     # simulate this behavior.
     #     pass
+
+    def cmdFullStateNew(self, pos, vel, acc, yaw, omega):
+        self.mode = CrazyflieSIL.MODE_LOW_FULLSTATE
+        self.setpoint.attitudeRate.roll = np.degrees(omega[0])
+        self.setpoint.attitudeRate.pitch = np.degrees(omega[1])
+        self.setpoint.attitudeRate.yaw = np.degrees(omega[2])
+        self.mode.x = firm.modeDisable
+        self.mode.y = firm.modeDisable
+        self.mode.z = firm.modeDisable
+        self.mode.roll = firm.modeVelocity
+        self.mode.pitch = firm.modeVelocity
+        self.mode.yaw = firm.modeVelocity
+        self.mode.quat = firm.modeDisable
 
     def cmdFullState(self, pos, vel, acc, yaw, omega):
         self.mode = CrazyflieSIL.MODE_LOW_FULLSTATE
@@ -252,7 +299,7 @@ class CrazyflieSIL:
         self.setpoint.acceleration.x = acc[0]
         self.setpoint.acceleration.y = acc[1]
         self.setpoint.acceleration.z = acc[2]
-                
+
         self.cmdHl_pos = copy_svec(self.setpoint.position)
         self.cmdHl_vel = copy_svec(self.setpoint.velocity)
         self.cmdHl_yaw = yaw
@@ -326,7 +373,7 @@ class CrazyflieSIL:
         self.state.velocity.y = state.vel[1]
         self.state.velocity.z = state.vel[2]
 
-        rpy = np.degrees(rowan.to_euler(state.quat, convention='xyz'))
+        rpy = np.degrees(rowan.to_euler(state.quat, convention="xyz"))
         # Note, legacy coordinate system, so invert pitch
         self.state.attitude.roll = rpy[0]
         self.state.attitude.pitch = -rpy[1]
@@ -338,6 +385,7 @@ class CrazyflieSIL:
         self.state.attitudeQuaternion.z = state.quat[3]
 
         # omega is part of sensors, not of the state
+        # print('state.omega', state.omega)
         self.sensors.gyro.x = np.degrees(state.omega[0])
         self.sensors.gyro.y = np.degrees(state.omega[1])
         self.sensors.gyro.z = np.degrees(state.omega[2])
@@ -349,15 +397,27 @@ class CrazyflieSIL:
             return None, {}
 
         if self.mode == CrazyflieSIL.MODE_IDLE:
-            return sim_data_types.Action([0,0,0,0]), {'torque_desired': np.zeros(3, dtype=np.float32), 'thrust_desired': 0.0}
+            return sim_data_types.Action([0, 0, 0, 0]), {
+                "torque_desired": np.zeros(3, dtype=np.float32),
+                "thrust_desired": 0.0,
+            }
 
         time_in_seconds = self.time_func()
         # ticks is essentially the time in milliseconds as an integer
         tick = int(time_in_seconds * 1000)
         if self.controller_name == "mellinger":
-            self.controller(self.mellinger_control, self.control, self.setpoint, self.sensors, self.state, tick)
+            self.controller(
+                self.mellinger_control,
+                self.control,
+                self.setpoint,
+                self.sensors,
+                self.state,
+                tick,
+            )
         elif self.controller_name == "bodyrate_python":
-            self.control = self.controller(self.control, self.setpoint, self.sensors, self.state, tick)
+            self.control = self.controller(
+                self.control, self.setpoint, self.sensors, self.state, tick
+            )
         else:
             self.controller(self.control, self.setpoint, self.sensors, self.state, tick)
         return self._fwcontrol_to_sim_data_types_action()
@@ -367,7 +427,6 @@ class CrazyflieSIL:
         return groupMask == 0 or (self.groupMask & groupMask) > 0
 
     def _fwcontrol_to_sim_data_types_action(self):
-
         firm.powerDistribution(self.control, self.motors_thrust_uncapped)
         firm.powerDistributionCap(self.motors_thrust_uncapped, self.motors_thrust_pwm)
 
@@ -377,40 +436,66 @@ class CrazyflieSIL:
             # polyfit using data and scripts from https://github.com/IMRCLab/crazyflie-system-id
             if pwm < 10000:
                 return 0
-            p = [3.26535711e-01, 3.37495115e+03]
+            p = [3.26535711e-01, 3.37495115e03]
             return np.polyval(p, pwm)
 
         def pwm_to_force(pwm):
             # polyfit using data and scripts from https://github.com/IMRCLab/crazyflie-system-id
-            p = [ 1.71479058e-09,  8.80284482e-05, -2.21152097e-01]
+            p = [1.71479058e-09, 8.80284482e-05, -2.21152097e-01]
             force_in_grams = np.polyval(p, pwm)
             force_in_newton = force_in_grams * 9.81 / 1000.0
             return np.maximum(force_in_newton, 0)
-        
+
         info = {
-            'torque_desired': np.array([self.control.torqueX, self.control.torqueY, self.control.torqueZ]),
-            'thrust_desired': self.control.thrustSi,
+            "torque_desired": np.array(
+                [self.control.torqueX, self.control.torqueY, self.control.torqueZ]
+            ),
+            "thrust_desired": self.control.thrustSi,
         }
 
-        rpms = [pwm_to_rpm(self.motors_thrust_pwm.motors.m1)*1.0,
-            pwm_to_rpm(self.motors_thrust_pwm.motors.m2)*1.0,
-            pwm_to_rpm(self.motors_thrust_pwm.motors.m3)*1.0,
-            pwm_to_rpm(self.motors_thrust_pwm.motors.m4)*1.0]
-        
+        rpms = [
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m1) * 1.0,
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m2) * 1.0,
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m3) * 1.0,
+            pwm_to_rpm(self.motors_thrust_pwm.motors.m4) * 1.0,
+        ]
+
         # DEBUG: bypass powerDistributionCap
-        rpms = torque2rpm(np.array([self.control.torqueX, self.control.torqueY, self.control.torqueZ]), self.control.thrustSi)
+        rpms = torque2rpm(
+            np.array(
+                [self.control.torqueX, self.control.torqueY, self.control.torqueZ]
+            ),
+            self.control.thrustSi,
+        )
 
         action = sim_data_types.Action(rpms)
 
         return action, info
 
-
     @staticmethod
     def _fwsetpoint_to_sim_data_types_state(fwsetpoint):
-        pos = np.array([fwsetpoint.position.x, fwsetpoint.position.y, fwsetpoint.position.z])
-        vel = np.array([fwsetpoint.velocity.x, fwsetpoint.velocity.y, fwsetpoint.velocity.z])
-        acc = np.array([fwsetpoint.acceleration.x, fwsetpoint.acceleration.y, fwsetpoint.acceleration.z])
-        omega = np.radians(np.array([fwsetpoint.attitudeRate.roll, fwsetpoint.attitudeRate.pitch, fwsetpoint.attitudeRate.yaw]))
+        pos = np.array(
+            [fwsetpoint.position.x, fwsetpoint.position.y, fwsetpoint.position.z]
+        )
+        vel = np.array(
+            [fwsetpoint.velocity.x, fwsetpoint.velocity.y, fwsetpoint.velocity.z]
+        )
+        acc = np.array(
+            [
+                fwsetpoint.acceleration.x,
+                fwsetpoint.acceleration.y,
+                fwsetpoint.acceleration.z,
+            ]
+        )
+        omega = np.radians(
+            np.array(
+                [
+                    fwsetpoint.attitudeRate.roll,
+                    fwsetpoint.attitudeRate.pitch,
+                    fwsetpoint.attitudeRate.yaw,
+                ]
+            )
+        )
 
         if fwsetpoint.mode.quat == firm.modeDisable:
             # compute rotation based on differential flatness
