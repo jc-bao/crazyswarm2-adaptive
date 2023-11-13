@@ -70,7 +70,12 @@ namespace libmotioncapture {
     size_t count = pImpl->client.GetSubjectCount().SubjectCount;
     for (size_t i = 0; i < count; ++i) {
       const std::string name = pImpl->client.GetSubjectName(i).SubjectName;
-      rigidBodies_.emplace(name, rigidBodyByName(name));
+      try {
+        rigidBodies_.emplace(name, rigidBodyByName(name));
+      } catch (const std::runtime_error& e) {
+        // Ignore
+      }
+    //   rigidBodies_.emplace(name, rigidBodyByName(name));
     }
     return rigidBodies_;
   }

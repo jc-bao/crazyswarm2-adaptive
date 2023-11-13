@@ -69,7 +69,9 @@ class PIDController(rclpy.node.Node):
             "pos_tar": [],
             "vel_tar": [],
             "omega_tar": [],
-            "ang_tar": []
+            "ang_tar": [],
+            "f_d": [],
+            "thrust": []
         }
 
     def __call__(self, state: PIDState, target: PIDState) -> np.ndarray:
@@ -124,6 +126,8 @@ class PIDController(rclpy.node.Node):
         self.log["vel_tar"].append(target.vel)
         self.log["omega_tar"].append(target.omega)
         self.log["ang_tar"].append(tf3d.euler.mat2euler(R_d))
+        self.log["f_d"].append(f_d)
+        self.log["thrust"].append(thrust)
 
 
         msg = Vector3Stamped()

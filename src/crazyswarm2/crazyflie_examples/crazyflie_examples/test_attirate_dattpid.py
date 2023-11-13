@@ -61,12 +61,12 @@ class Crazyflie:
             m=self.mass, 
             g=self.g, max_thrust=10.0, 
             max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
-            Kp=np.array([1.0, 1.0, 1.0])*2.0, 
-            Kd=np.array([1.0, 1.0, 1.5])*2.0, 
-            Ki=np.array([1.0, 1.0, 10.0])*0.06,
-            Kp_att=np.array([1.0, 1.0, 1.0])*0.04,
+            Kp=np.array([1.0, 1.0, 1.0])*6.0, 
+            Kd=np.array([1.0, 1.0, 1.0])*4.0, 
+            Ki=np.array([1.0, 1.0, 1.0])*3.0,
+            Kp_att=np.array([1.0, 1.0, 1.0])*10.0,
             # Kp_att=np.array([1.0, 1.0, 1.0])*0.040,
-            Ki_att=np.array([1.0, 1.0, 1.0])*0.004,
+            Ki_att=np.array([1.0, 1.0, 1.0])*0.000,
             dt = 1.0/self.rate)
         
         self.pos_pid = PIDController(self.pos_pid_param)
@@ -257,8 +257,8 @@ class Crazyflie:
         traj = Path()
         traj.header.frame_id = "map"
         
-        base_w = 2 * np.pi / 8.0
-        t = np.arange(0, int(5.0*self.rate)) / self.rate
+        base_w = 2 * np.pi / 2.0
+        t = np.arange(0, int(10.0*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((len(t), 3))
         traj_vxyz = np.zeros((len(t), 3))

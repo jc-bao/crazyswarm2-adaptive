@@ -4,6 +4,7 @@
     hostname: "192.168.3.137"
 
     mode: "libRigidBodyTracker" # one of motionCapture,libRigidBodyTracker
+    # mode: "motionCapture"
 
     marker_configurations:
       default: # for standard Crazyflie

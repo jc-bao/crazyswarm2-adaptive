@@ -23,6 +23,7 @@ from quadjax.train import ActorCritic, Compressor, Adaptor
 from quadjax import controllers
 from quadjax.dynamics import utils, geom
 from quadjax.dynamics.dataclass import EnvParams3D, EnvState3D, Action3D
+import time
 
 def do_profile(follow=[]):
     def inner(func):
@@ -56,6 +57,7 @@ class Crazyflie:
         self.rng = jax.random.PRNGKey(0)
         rng_params, self.rng = jax.random.split(self.rng)
         self.env_params = self.sample_params_jit(rng_params)
+        self.env_params.replace(dt=1/25.0)
         rng_state, self.rng = jax.random.split(self.rng)
         obs, info, self.state_sim = self.reset_jit(rng_state)
         # deep copy flax.struct.dataclass 
@@ -68,6 +70,7 @@ class Crazyflie:
 
         # base controller: PID
         self.base_controller, self.base_control_params = get_controller(self.env, 'pid', None)
+        self.base_control_params = self.base_control_params.replace(Kp_att=0.06, Kp=2.0, Kd=2.0, Ki=0.6, Ki_att=0.006)
         self.default_base_control_params = deepcopy(self.base_control_params)
         self.base_controller_jit = jax.jit(self.base_controller)
         # controller to test out
@@ -105,10 +108,19 @@ class Crazyflie:
         self.tf_listener = tf2_ros.TransformListener(buffer=self.tf_buffer, node=self.swarm.allcfs)
         self.rpm_listener = self.swarm.allcfs.create_subscription(Float32MultiArray, 'rpm', self.rpm_callback, 10)
         self.omega_listener = self.swarm.allcfs.create_subscription(Float32MultiArray, 'omega', self.omega_callback, 10)
-        # self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', self.state_callback_cf, rate)
+        self.swarm.allcfs.create_subscription(PoseStamped, 'cf1/pose', self.state_callback_cf, rate)
 
         # ROS timer
         self.last_control_time = 0.0
+
+        mmddhhmmss = time.strftime("%m%d%H%M%S", time.localtime())
+        self.log_path = f"/home/pcy/Research/code/crazyswarm2-adaptive/cflog/cfctl_{mmddhhmmss}.txt"
+        self.log = []
+        
+        no_action_param = self.swarm.allcfs.declare_parameter('no_action', False)
+        self.no_action = no_action_param.get_parameter_value().bool_value
+        if self.no_action:
+            self.swarm.allcfs.get_logger().warn("no_action is set to True, no action will be sent to the drone")
 
     # def state_callback_cf_tf(self, data):
     #     pos = data.pose.position
@@ -127,6 +139,7 @@ class Crazyflie:
         quat = data.pose.orientation
         self.pos_kf = np.array([pos.x, pos.y, pos.z])
         self.quat_kf = np.array([quat.x, quat.y, quat.z, quat.w])
+
 
     def get_real_state(self):
         dt = self.env.default_params.dt
@@ -185,11 +198,14 @@ class Crazyflie:
         )
 
     def get_drone_state(self):
-        trans_mocap = self.tf_buffer.lookup_transform('world', 'cf1', rclpy.time.Time())
-        pos = trans_mocap.transform.translation
-        quat = trans_mocap.transform.rotation
+        # trans_mocap = self.tf_buffer.lookup_transform('world', 'cf1', rclpy.time.Time())
+        # pos = trans_mocap.transform.translation
+        # quat = trans_mocap.transform.rotation
+        pos = self.pos_kf
+        quat = self.quat_kf
         # get timestamp
-        return jnp.array([pos.x, pos.y, pos.z]) - self.world_center, jnp.array([quat.x, quat.y, quat.z, quat.w])
+        # return jnp.array([pos.x, pos.y, pos.z]) - self.world_center, jnp.array([quat.x, quat.y, quat.z, quat.w])
+        return jnp.array(pos - self.world_center), jnp.array(quat)
 
     def set_attirate(self, omega_target, thrust_target):
         # convert to degree
@@ -221,28 +237,61 @@ class Crazyflie:
             if self.state_real.pos[2] < (-self.world_center[2]+0.1):
                 pos_tar_real = jnp.array([0.0, 0.0, -self.world_center[2]+0.15])
                 vel_tar_real = jnp.zeros(3)
+            print(f"goto: {i}/{N}, pos_tar_real: {pos_tar_real}, pos_tar_sim: {pos_tar_sim}, pos_start_real: {pos_start_real}, pos_start_sim: {pos_start_sim}, pos_end: {pos_end}")
             state_real_replaced = self.state_real.replace(pos_tar=pos_tar_real, vel_tar=vel_tar_real, acc_tar = jnp.zeros(3))
-            action, _, _ = jax.block_until_ready(self.base_controller_jit(None, state_real_replaced, self.env_params, None, self.base_control_params, None))
+            
+            action, _, info = jax.block_until_ready(self.base_controller_jit(None, state_real_replaced, self.env_params, None, self.base_control_params, None))
+            self.log.append(info)
 
             state_sim_replaced = self.state_sim.replace(pos_tar=pos_tar_sim, vel_tar=vel_tar_sim, acc_tar = jnp.zeros(3))
             action_sim, _, _ = jax.block_until_ready(self.base_controller_jit(None, state_sim_replaced, self.env_params, None, self.base_control_params, None))
 
-            next_state_dict = self.step(action, action_sim)
+            next_state_dict = self.step(action, action_sim, self.no_action)
 
             self.state_real = self.state_real.replace(time=0)
             self.state_sim = self.state_sim.replace(time=0)
         return next_state_dict
     
+    def empty_control(self):
+        pos_real = self.get_drone_state()[0]
+        pos_sim = self.state_sim.pos
+        for i in range(10):
+            self.state_real = self.state_real.replace(pos_tar=pos_real, vel_tar=jnp.zeros(3), acc_tar = jnp.zeros(3))
+            self.state_sim = self.state_sim.replace(pos_tar=pos_sim, vel_tar=jnp.zeros(3), acc_tar = jnp.zeros(3))
+            action, _, info = jax.block_until_ready(self.base_controller_jit(None, self.state_real, self.env_params, None, self.base_control_params, None))
+            action_sim, _, _ = jax.block_until_ready(self.base_controller_jit(None, self.state_sim, self.env_params, None, self.base_control_params, None))
+            next_state_dict = self.step(action, action_sim, no_action=True)
+            self.state_real = self.state_real.replace(time=0)
+            self.state_sim = self.state_sim.replace(time=0)
+
+        return next_state_dict
+
+
     def reset(self):
         # NOTE use this to estabilish connection
+        print("empty spin started")
         for _ in range(10):
             self.set_attirate(np.zeros(3), 0.0)
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0)
+        print("empty spin finished")
+
+        print("empty control started")
+        self.empty_control()
+        print("empty control finished")
+
 
         reset_rng, self.rng = jax.random.split(self.rng)
         # reset controller
         self.base_control_params = self.default_base_control_params
         self.control_params = self.default_control_params
+        # take off
+
+
+
+        
+        pos = self.get_drone_state()[0]
+        pos_tar_0 = pos.at[2].set(0.0)
+        next_state_dict = self.goto(pos_tar_0, timelimit=2.0)
         # fly to initial point
         next_state_dict = self.goto(self.state_real.pos_tar, timelimit=3.0)
         self.state_real = self.get_real_state()
@@ -254,7 +303,7 @@ class Crazyflie:
         return next_state_dict
     
     # @do_profile()
-    def step(self, action: jnp.ndarray, action_sim = None):
+    def step(self, action: jnp.ndarray, action_sim = None, no_action = False):
         # time_star = time.time()
         if action_sim is None:
             action_sim = action
@@ -266,7 +315,9 @@ class Crazyflie:
         # step real-world state
         thrust_tar = (action[0]+1.0)/2.0*self.env.default_params.max_thrust
         omega_tar = action[1:4] * self.env.default_params.max_omega
-        self.set_attirate(omega_tar, thrust_tar)
+
+        if not no_action:
+            self.set_attirate(omega_tar, thrust_tar)
 
         # wait for next time step
         dt = self.env.default_params.dt
@@ -348,86 +399,100 @@ class Crazyflie:
     
 def main(repeat_times = 1, filename = ''):
 
-    env = Crazyflie(task='tracking_zigzag', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
+    # env = Crazyflie(task='tracking', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
+    env = Crazyflie(task='hovering', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
 
-    print('reset...')
-    next_state_dict = env.reset()
-    obs_real, state_real, reward_real, done_real, info_real = next_state_dict['real']
-    obs_sim, state_sim, reward_sim, done_sim, info_sim = next_state_dict['sim']
+    try:
 
-    print('main task...')
-    rng = jax.random.PRNGKey(1)
-    state_real_seq, obs_real_seq, reward_real_seq = [], [], []
-    state_sim_seq, obs_sim_seq, reward_sim_seq = [], [], []
-    control_seq = []
-    ros_info_seq = []
-    n_dones = 0
-
-    # import pickle
-    # with open("/home/pcy/Research/quadjax/results/real_state_seq_.pkl", "rb") as f:
-    #     state_seq_real = pickle.load(f)
-    # omega_tar = np.array([state['last_torque'] for state in state_seq_real]) / np.array([9e-3, 9e-3, 2e-3]) * np.array([10.0, 10.0, 3.0])
-
-    # for i in range(200):
-    while n_dones < repeat_times:
-        state_real_seq.append(state_real)
-        state_sim_seq.append(state_sim)
-
-        rng, rng_act = jax.random.split(rng)
-        action, env.control_params, control_info = jax.block_until_ready(env.controller_jit(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real))
-        action_sim, _, _ = jax.block_until_ready(env.controller_jit(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim))
-        
-        # action = np.array([1.0, omega_tar[i, 0]/10.0, omega_tar[i, 1]/10.0, omega_tar[i, 2]/3.0])
-        # if t % 20 < 10:
-        # action = np.array([1.0, 0.3*np.sin(t/20), 0.3*np.sin(t/15+np.pi/2), 0.3*np.sin(t/10+np.pi)])
-        # action_sim = action
-        # else:
-        #     action = np.array([0.0, -0.3, -0.3, -0.3])
-        #     action_sim = np.array([0.0, -0.3, -0.3, -0.3])
-
-        # manually record certain control parameters into state_seq
-        control_params = env.control_params
-        if hasattr(control_params, 'd_hat') and hasattr(control_params, 'vel_hat'):
-            control_seq.append({'d_hat': control_params.d_hat, 'vel_hat': control_params.vel_hat})
-        if hasattr(control_params, 'a_hat'):
-            control_seq.append({'a_hat': control_params.a_hat})
-        if hasattr(control_params, 'quat_desired'):
-            control_seq.append({'quat_desired': control_params.quat_desired})
-        next_state_dict = env.step(action, action_sim)
+        print('reset...')
+        next_state_dict = env.reset()
         obs_real, state_real, reward_real, done_real, info_real = next_state_dict['real']
         obs_sim, state_sim, reward_sim, done_sim, info_sim = next_state_dict['sim']
 
-        # DEBUG: should be done sim
-        if done_real:
-            control_params = env.controller.update_params(env.env_params, control_params)
-            n_dones += 1
+        env.cf.setParam('usd.logging', 1)
+        print('main task...')
+        rng = jax.random.PRNGKey(1)
+        state_real_seq, obs_real_seq, reward_real_seq = [], [], []
+        state_sim_seq, obs_sim_seq, reward_sim_seq = [], [], []
+        control_seq = []
+        ros_info_seq = []
+        n_dones = 0
 
-        reward_real_seq.append(reward_real)
-        reward_sim_seq.append(reward_sim)
-        obs_real_seq.append(obs_real)
-        obs_sim_seq.append(obs_sim)
-        ros_info_seq.append({'rpm': env.rpm})
+        # import pickle
+        # with open("/home/pcy/Research/quadjax/results/real_state_seq_.pkl", "rb") as f:
+        #     state_seq_real = pickle.load(f)
+        # omega_tar = np.array([state['last_torque'] for state in state_seq_real]) / np.array([9e-3, 9e-3, 2e-3]) * np.array([10.0, 10.0, 3.0])
 
-    print('landing...')
-    env.goto(jnp.array([0.0, 0.0, -env.world_center[2]+0.1]), timelimit=3.0)
+        # for i in range(200):
+        while n_dones < repeat_times:
+            state_real_seq.append(state_real)
+            state_sim_seq.append(state_sim)
 
-    print('plotting...')
-    # convert state into dict
-    state_real_seq_dict = [s.__dict__ for s in state_real_seq]
-    state_sim_seq_dict = [s.__dict__ for s in state_sim_seq]
-    if len(control_seq) > 0:
-        # merge control_seq into state_seq with dict
-        for i in range(len(state_real_seq)):
-            state_real_seq_dict[i] = {**state_real_seq_dict[i], **control_seq[i], **ros_info_seq[i]}
-            state_sim_seq_dict[i] = {**state_sim_seq_dict[i], **control_seq[i]}
-    with open(f"{quadjax.get_package_path()}/../results/real_state_seq_{filename}.pkl", "wb") as f:
-        pickle.dump(state_real_seq_dict, f)
-    with open(f"{quadjax.get_package_path()}/../results/sim_state_seq_{filename}.pkl", "wb") as f:
-        pickle.dump(state_sim_seq_dict, f)
-    utils.plot_states(state_real_seq_dict, obs_real_seq, reward_real_seq, env.env_params, 'real'+filename)
-    utils.plot_states(state_sim_seq_dict, obs_sim_seq, reward_sim_seq, env.env_params, 'sim'+filename)
+            rng, rng_act = jax.random.split(rng)
+            action, env.control_params, control_info = jax.block_until_ready(env.controller_jit(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real))
+            action_sim, _, _ = jax.block_until_ready(env.controller_jit(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim))
+            
+            # action = np.array([1.0, omega_tar[i, 0]/10.0, omega_tar[i, 1]/10.0, omega_tar[i, 2]/3.0])
+            # if t % 20 < 10:
+            # action = np.array([1.0, 0.3*np.sin(t/20), 0.3*np.sin(t/15+np.pi/2), 0.3*np.sin(t/10+np.pi)])
+            # action_sim = action
+            # else:
+            #     action = np.array([0.0, -0.3, -0.3, -0.3])
+            #     action_sim = np.array([0.0, -0.3, -0.3, -0.3])
 
-    rclpy.shutdown()
+            # manually record certain control parameters into state_seq
+            control_params = env.control_params
+            if hasattr(control_params, 'd_hat') and hasattr(control_params, 'vel_hat'):
+                control_seq.append({'d_hat': control_params.d_hat, 'vel_hat': control_params.vel_hat})
+            if hasattr(control_params, 'a_hat'):
+                control_seq.append({'a_hat': control_params.a_hat})
+            if hasattr(control_params, 'quat_desired'):
+                control_seq.append({'quat_desired': control_params.quat_desired})
+            next_state_dict = env.step(action, action_sim)
+            obs_real, state_real, reward_real, done_real, info_real = next_state_dict['real']
+            obs_sim, state_sim, reward_sim, done_sim, info_sim = next_state_dict['sim']
+
+            # DEBUG: should be done sim
+            if done_real:
+                control_params = env.controller.update_params(env.env_params, control_params)
+                n_dones += 1
+
+            reward_real_seq.append(reward_real)
+            reward_sim_seq.append(reward_sim)
+            obs_real_seq.append(obs_real)
+            obs_sim_seq.append(obs_sim)
+            ros_info_seq.append({'rpm': env.rpm})
+        env.cf.setParam('usd.logging', 0)
+
+        print('landing...')
+        env.goto(jnp.array([0.0, 0.0, -env.world_center[2]]), timelimit=5.0)
+
+        print('plotting...')
+        # convert state into dict
+        state_real_seq_dict = [s.__dict__ for s in state_real_seq]
+        state_sim_seq_dict = [s.__dict__ for s in state_sim_seq]
+        if len(control_seq) > 0:
+            # merge control_seq into state_seq with dict
+            for i in range(len(state_real_seq)):
+                state_real_seq_dict[i] = {**state_real_seq_dict[i], **control_seq[i], **ros_info_seq[i]}
+                state_sim_seq_dict[i] = {**state_sim_seq_dict[i], **control_seq[i]}
+        with open(f"{quadjax.get_package_path()}/../results/real_state_seq_{filename}.pkl", "wb") as f:
+            pickle.dump(state_real_seq_dict, f)
+        with open(f"{quadjax.get_package_path()}/../results/sim_state_seq_{filename}.pkl", "wb") as f:
+            pickle.dump(state_sim_seq_dict, f)
+        utils.plot_states(state_real_seq_dict, obs_real_seq, reward_real_seq, env.env_params, 'real'+filename)
+        utils.plot_states(state_sim_seq_dict, obs_sim_seq, reward_sim_seq, env.env_params, 'sim'+filename)
+
+    except KeyboardInterrupt:
+        pass
+
+    finally:
+
+        with open(env.log_path, "wb") as f:
+            pickle.dump(env.log, f)
+        print("log saved to", env.log_path)
+        
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     main()

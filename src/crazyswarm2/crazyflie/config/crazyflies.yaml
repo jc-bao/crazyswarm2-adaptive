@@ -55,7 +55,7 @@ all:
       enHighLevel: 1
     stabilizer:
       estimator: 2 # 1: complementary, 2: kalman
-      controller: 4 # 1: PID, 2: mellinger 3:INDI 4: brescianini
+      controller: 3 # 1: PID, 2: mellinger 3:INDI 4: brescianini
     locSrv:
       extPosStdDev: 1e-3
       extQuatStdDev: 0.5e-1
