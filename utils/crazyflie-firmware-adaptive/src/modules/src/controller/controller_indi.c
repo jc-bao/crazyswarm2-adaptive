@@ -8,7 +8,8 @@
 #include "physicalConstants.h"
 
 static float g_vehicleMass = CF_MASS;
-static float massThrust = 132000;
+// static float massThrust = 132000;
+static float massThrust = 85000;
 
 // XY Position PID
 // static float kp_xy = 0.0;       // P

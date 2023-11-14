@@ -19,6 +19,7 @@
 #include "num.h"
 #include "controller_mellinger.h"
 #include "controller_brescianini.h"
+#include "controller_indi.h"
 #include "power_distribution.h"
 %}
 
@@ -32,6 +33,7 @@
 %include "controller_mellinger.h"
 %include "controller_brescianini.h"
 %include "power_distribution.h"
+%include "controller_indi.h"
 
 %inline %{
 struct poly4d* piecewise_get(struct piecewise_traj *pp, int i)

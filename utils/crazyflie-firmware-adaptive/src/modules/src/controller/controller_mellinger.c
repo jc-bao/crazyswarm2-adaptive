@@ -104,7 +104,7 @@ void controllerMellingerReset(controllerMellinger_t* self)
 void controllerMellingerInit(controllerMellinger_t* self)
 {
   // copy default values (bindings), or does nothing (firmware)
-  DEBUG_PRINT("controllerMellingerInit\n");
+//   DEBUG_PRINT("controllerMellingerInit\n");
   *self = g_self;
 
   controllerMellingerReset(self);
@@ -120,7 +120,7 @@ void controllerMellinger(controllerMellinger_t* self, control_t *control, const 
                                          const state_t *state,
                                          const uint32_t tick)
 {
-//   DEBUG_PRINT("controllerMellinger\n");
+  DEBUG_PRINT("controllerMellinger\n");
   struct vec r_error;
   struct vec v_error;
   struct vec target_thrust;

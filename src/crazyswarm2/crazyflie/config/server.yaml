@@ -30,4 +30,4 @@
               calibration:
                 tvec: [0,0,0]
                 rvec: [ 0.61394313, -0.61394313,  1.48218982]   # 45 deg tilt
-      controller: mellinger # none, pid, mellinger, bodyrate_python
+      controller: indi # none, pid, mellinger, bodyrate_python

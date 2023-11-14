@@ -46,37 +46,41 @@ class Crazyflie:
     def __init__(self, task = 'tracking', controller_name = 'pid', controller_params = None) -> None:
         # create jax environment for reference
         self.env = Quad3D(task=task, dynamics='bodyrate', obs_type='quad', lower_controller='base', enable_randomizer=False, disturb_type='none')
-        self.step_jit = jax.jit(self.env.step)
-        self.reset_jit = jax.jit(self.env.reset)
-        self.get_obs_jit = jax.jit(self.env.get_obs)
-        self.get_info_jit = jax.jit(self.env.get_info)
-        self.get_reward_jit = jax.jit(self.env.reward_fn)
-        self.is_terminal_jit = jax.jit(self.env.is_terminal)
-        self.sample_params_jit = jax.jit(self.env.sample_params)
+        # self.step_jit = jax.jit(self.env.step)
+        # self.reset_jit = jax.jit(self.env.reset)
+        # self.get_obs_jit = jax.jit(self.env.get_obs)
+        # self.get_info_jit = jax.jit(self.env.get_info)
+        # self.get_reward_jit = jax.jit(self.env.reward_fn)
+        # self.is_terminal_jit = jax.jit(self.env.is_terminal)
+        # self.sample_params_jit = jax.jit(self.env.sample_params)
 
         self.rng = jax.random.PRNGKey(0)
         rng_params, self.rng = jax.random.split(self.rng)
-        self.env_params = self.sample_params_jit(rng_params)
-        self.env_params.replace(dt=1/25.0)
+        self.env_params = self.env.sample_params(rng_params)
+        # self.env_params.replace(dt=1/25.0)
         rng_state, self.rng = jax.random.split(self.rng)
-        obs, info, self.state_sim = self.reset_jit(rng_state)
+        obs, info, self.state_sim = self.env.reset(rng_state)
         # deep copy flax.struct.dataclass 
         self.state_real = deepcopy(self.state_sim)
 
         # real-world parameters
-        self.world_center = jnp.array([0.0, 0.0, 1.5])
+        self.world_center = jnp.array([-0.5, -0.5, 1.5])
         self.xyz_min = jnp.array([-2.0, -3.0, -2.0])
         self.xyz_max = jnp.array([2.0, 2.0, 1.5])
 
         # base controller: PID
         self.base_controller, self.base_control_params = get_controller(self.env, 'pid', None)
-        self.base_control_params = self.base_control_params.replace(Kp_att=0.06, Kp=2.0, Kd=2.0, Ki=0.6, Ki_att=0.006)
+        self.base_control_params = self.base_control_params.replace(Kp_att=5.0, Kp=18.0, Kd=4.0, Ki=0.0, Ki_att=1.0)
+        # self.base_control_params = self.base_control_params.replace(Kp_att=5.0, Kp=6.0, Kd=4.0, Ki=3.0, Ki_att=1.0)
+        # self.base_control_params = self.base_control_params.replace(Kp_att=5.0, Kp=6.0, Kd=4.0, Ki=1.2, Ki_att=1.0)
+        # self.base_control_params = self.base_control_params.replace(Kp_att=6.0, Kp=2.0, Kd=2.0, Ki=0.6, Ki_att=0.2)
+        # self.base_control_params = self.base_control_params.replace(Kp_att=10.0, Kp=6.0, Kd=4.0, Ki=3.0, Ki_att=0.06)
         self.default_base_control_params = deepcopy(self.base_control_params)
-        self.base_controller_jit = jax.jit(self.base_controller)
+        # self.base_controller_jit = jax.jit(self.base_controller)
         # controller to test out
         self.controller, self.control_params = get_controller(self.env, controller_name, controller_params)
         self.default_control_params = deepcopy(self.control_params)
-        self.controller_jit = jax.jit(self.controller)
+        # self.controller_jit = jax.jit(self.controller)
 
         # ROS related initialization
         self.pos = jnp.zeros(3)
@@ -145,6 +149,14 @@ class Crazyflie:
         dt = self.env.default_params.dt
 
         vel_hist = jnp.diff(self.pos_hist, axis=0) / dt
+        # clip vel to -2 to 2
+        vel_hist = jnp.clip(vel_hist, -2.0, 2.0)
+
+        # calculate velocity with low-pass filter
+        vel = 0.5 * vel_hist[-1] + 0.5 * vel_hist[-2]
+
+        # update vel_hist
+        vel_hist = jnp.concatenate([vel_hist[1:], vel.reshape(1,3)], axis=0)
         
         # dquat_hist = jnp.diff(self.quat_hist, axis=0) # NOTE diff here will make the length of dquat_hist 1 less than the others
         # quat_hist_conj = jnp.concatenate([-self.quat_hist[:, :-1], self.quat_hist[:, -1:]], axis=-1)
@@ -159,7 +171,7 @@ class Crazyflie:
         return EnvState3D(
             # drone
             pos = self.pos_hist[-1], 
-            vel = vel_hist[-1], 
+            vel = vel, 
             omega = omega_hist[-1],
             omega_tar = jnp.zeros(3),
             quat = self.quat_hist[-1],
@@ -200,11 +212,18 @@ class Crazyflie:
     def get_drone_state(self):
         # trans_mocap = self.tf_buffer.lookup_transform('world', 'cf1', rclpy.time.Time())
         # pos = trans_mocap.transform.translation
+        # pos = jnp.array([pos.x, pos.y, pos.z])
         # quat = trans_mocap.transform.rotation
+        # quat = jnp.array([quat.x, quat.y, quat.z, quat.w])
+        
         pos = self.pos_kf
         quat = self.quat_kf
         # get timestamp
         # return jnp.array([pos.x, pos.y, pos.z]) - self.world_center, jnp.array([quat.x, quat.y, quat.z, quat.w])
+        if self.log:
+            self.log[-1]['pos_kf'] = pos
+            self.log[-1]['quat_kf'] = quat
+
         return jnp.array(pos - self.world_center), jnp.array(quat)
 
     def set_attirate(self, omega_target, thrust_target):
@@ -234,17 +253,21 @@ class Crazyflie:
                 vel_tar_real = (pos_end - pos_start_real) / timelimit
                 pos_tar_sim = pos_start_sim + (pos_end - pos_start_sim) * i / N_move
                 vel_tar_sim = (pos_end - pos_start_sim) / timelimit
-            if self.state_real.pos[2] < (-self.world_center[2]+0.1):
-                pos_tar_real = jnp.array([0.0, 0.0, -self.world_center[2]+0.15])
-                vel_tar_real = jnp.zeros(3)
+            # if self.state_real.pos[2] < (-self.world_center[2]+0.1):
+            #     pos_tar_real = jnp.array([0.0, 0.0, -self.world_center[2]+0.15])
+            #     vel_tar_real = jnp.zeros(3)
             print(f"goto: {i}/{N}, pos_tar_real: {pos_tar_real}, pos_tar_sim: {pos_tar_sim}, pos_start_real: {pos_start_real}, pos_start_sim: {pos_start_sim}, pos_end: {pos_end}")
             state_real_replaced = self.state_real.replace(pos_tar=pos_tar_real, vel_tar=vel_tar_real, acc_tar = jnp.zeros(3))
             
-            action, _, info = jax.block_until_ready(self.base_controller_jit(None, state_real_replaced, self.env_params, None, self.base_control_params, None))
+            action, _, info = jax.block_until_ready(self.base_controller(None, state_real_replaced, self.env_params, None, self.base_control_params, None))
+            # convert info to dict
+            # info = {k: np.array(v) for k, v in info}
+            info['ros_time'] = self.timeHelper.time()
+            info['sys_time'] = time.time()
             self.log.append(info)
 
             state_sim_replaced = self.state_sim.replace(pos_tar=pos_tar_sim, vel_tar=vel_tar_sim, acc_tar = jnp.zeros(3))
-            action_sim, _, _ = jax.block_until_ready(self.base_controller_jit(None, state_sim_replaced, self.env_params, None, self.base_control_params, None))
+            action_sim, _, _ = jax.block_until_ready(self.base_controller(None, state_sim_replaced, self.env_params, None, self.base_control_params, None))
 
             next_state_dict = self.step(action, action_sim, self.no_action)
 
@@ -258,8 +281,8 @@ class Crazyflie:
         for i in range(10):
             self.state_real = self.state_real.replace(pos_tar=pos_real, vel_tar=jnp.zeros(3), acc_tar = jnp.zeros(3))
             self.state_sim = self.state_sim.replace(pos_tar=pos_sim, vel_tar=jnp.zeros(3), acc_tar = jnp.zeros(3))
-            action, _, info = jax.block_until_ready(self.base_controller_jit(None, self.state_real, self.env_params, None, self.base_control_params, None))
-            action_sim, _, _ = jax.block_until_ready(self.base_controller_jit(None, self.state_sim, self.env_params, None, self.base_control_params, None))
+            action, _, info = jax.block_until_ready(self.base_controller(None, self.state_real, self.env_params, None, self.base_control_params, None))
+            action_sim, _, _ = jax.block_until_ready(self.base_controller(None, self.state_sim, self.env_params, None, self.base_control_params, None))
             next_state_dict = self.step(action, action_sim, no_action=True)
             self.state_real = self.state_real.replace(time=0)
             self.state_sim = self.state_sim.replace(time=0)
@@ -285,15 +308,11 @@ class Crazyflie:
         self.base_control_params = self.default_base_control_params
         self.control_params = self.default_control_params
         # take off
-
-
-
-        
-        pos = self.get_drone_state()[0]
-        pos_tar_0 = pos.at[2].set(0.0)
-        next_state_dict = self.goto(pos_tar_0, timelimit=2.0)
+        # pos = self.get_drone_state()[0]
+        # pos_tar_0 = pos.at[2].set(0.0)
+        # next_state_dict = self.goto(pos_tar_0, timelimit=10.0)
         # fly to initial point
-        next_state_dict = self.goto(self.state_real.pos_tar, timelimit=3.0)
+        next_state_dict = self.goto(self.state_real.pos_tar, timelimit=10.0)
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
@@ -310,7 +329,7 @@ class Crazyflie:
         rng_step, self.rng = jax.random.split(self.rng)
 
         # step simulator state
-        obs_sim, self.state_sim, reward_sim, done_sim, info_sim = jax.block_until_ready(self.step_jit(rng_step, self.state_sim, action_sim, self.env_params)) 
+        obs_sim, self.state_sim, reward_sim, done_sim, info_sim = jax.block_until_ready(self.env.step(rng_step, self.state_sim, action_sim, self.env_params)) 
         
         # step real-world state
         thrust_tar = (action[0]+1.0)/2.0*self.env.default_params.max_thrust
@@ -318,6 +337,8 @@ class Crazyflie:
 
         if not no_action:
             self.set_attirate(omega_tar, thrust_tar)
+        else:
+            self.set_attirate(np.zeros(3), 0.0)
 
         # wait for next time step
         dt = self.env.default_params.dt
@@ -340,10 +361,10 @@ class Crazyflie:
 
         self.action_hist = jnp.concatenate([self.action_hist[1:], action.reshape(1,4)], axis=0)
         self.state_real = self.get_real_state()
-        obs_real = self.get_obs_jit(self.state_real, self.env_params)
-        reward_real = self.get_reward_jit(self.state_real, self.env_params)
-        done_real = self.is_terminal_jit(self.state_real, self.env_params)
-        info_real = self.get_info_jit(self.state_real, self.env_params)
+        obs_real = self.env.get_obs(self.state_real, self.env_params)
+        reward_real = self.env.reward_fn(self.state_real, self.env_params)
+        done_real = self.env.is_terminal(self.state_real, self.env_params)
+        info_real = self.env.get_info(self.state_real, self.env_params)
 
         self.pub_state()
 
@@ -400,7 +421,7 @@ class Crazyflie:
 def main(repeat_times = 1, filename = ''):
 
     # env = Crazyflie(task='tracking', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
-    env = Crazyflie(task='hovering', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
+    env = Crazyflie(task='tracking', controller_name='pid', controller_params='real/ppo_params_RMA-DR')
 
     try:
 
@@ -424,13 +445,14 @@ def main(repeat_times = 1, filename = ''):
         # omega_tar = np.array([state['last_torque'] for state in state_seq_real]) / np.array([9e-3, 9e-3, 2e-3]) * np.array([10.0, 10.0, 3.0])
 
         # for i in range(200):
+        '''
         while n_dones < repeat_times:
             state_real_seq.append(state_real)
             state_sim_seq.append(state_sim)
 
             rng, rng_act = jax.random.split(rng)
-            action, env.control_params, control_info = jax.block_until_ready(env.controller_jit(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real))
-            action_sim, _, _ = jax.block_until_ready(env.controller_jit(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim))
+            action, env.control_params, control_info = jax.block_until_ready(env.controller(obs_real, state_real, env.env_params, rng_act, env.control_params, info_real))
+            action_sim, _, _ = jax.block_until_ready(env.controller(obs_sim, state_sim, env.env_params, rng_act, env.control_params, info_sim))
             
             # action = np.array([1.0, omega_tar[i, 0]/10.0, omega_tar[i, 1]/10.0, omega_tar[i, 2]/3.0])
             # if t % 20 < 10:
@@ -462,10 +484,11 @@ def main(repeat_times = 1, filename = ''):
             obs_real_seq.append(obs_real)
             obs_sim_seq.append(obs_sim)
             ros_info_seq.append({'rpm': env.rpm})
-        env.cf.setParam('usd.logging', 0)
+        '''
 
-        print('landing...')
-        env.goto(jnp.array([0.0, 0.0, -env.world_center[2]]), timelimit=5.0)
+        # print('landing...')
+        env.set_attirate(np.zeros(3), 0.0)
+        # env.goto(jnp.array([0.0, 0.0, -env.world_center[2]]), timelimit=5.0)
 
         print('plotting...')
         # convert state into dict
@@ -487,6 +510,7 @@ def main(repeat_times = 1, filename = ''):
         pass
 
     finally:
+        env.cf.setParam('usd.logging', 0)
 
         with open(env.log_path, "wb") as f:
             pickle.dump(env.log, f)
@@ -494,5 +518,7 @@ def main(repeat_times = 1, filename = ''):
         
         rclpy.shutdown()
 
+
 if __name__ == "__main__":
-    main()
+    # with jax.disable_jit():
+    main(repeat_times=-1)

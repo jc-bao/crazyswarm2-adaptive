@@ -39,6 +39,7 @@ fw_sources = [
     "src/modules/src/controller/attitude_pid_controller.c",
     "src/modules/src/controller/controller_mellinger.c",
     "src/modules/src/controller/controller_brescianini.c",
+    "src/modules/src/controller/controller_indi.c",
     "src/utils/src/pid.c",
     "src/utils/src/filter.c",
     "src/utils/src/num.c",

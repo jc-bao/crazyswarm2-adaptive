@@ -164,6 +164,9 @@ class CrazyflieSIL:
         elif controller_name == "brescianini":
             firm.controllerBrescianiniInit()
             self.controller = firm.controllerBrescianini
+        elif controller_name == 'indi':
+            firm.controllerINDIInit()
+            self.controller = firm.controllerINDI
         elif controller_name == "bodyrate_python":
             self.controller = bodyrate_controller
         else:

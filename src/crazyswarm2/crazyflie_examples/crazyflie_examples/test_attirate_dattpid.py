@@ -34,7 +34,6 @@ class Crazyflie:
         self.cf_name = self.cf.prefix[1:]
         self.cf_id = 0
         self.cf_num = 1
-        
         # check if simulation
         self.is_sim = self.allcfs.get_parameter("use_sim_time").get_parameter_value().bool_value
         # check if bag_path is set
