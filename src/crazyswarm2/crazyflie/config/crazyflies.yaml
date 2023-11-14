@@ -61,13 +61,23 @@ all:
       extQuatStdDev: 0.5e-1
     kalman:
       resetEstimation: 1
-    ctrlAtt:
-      kp_rp_rate: 150.0   # 150.0 works good for hover
-      ki_rp_rate: 20.0    # 20.0 works good for hover
-      kp_yaw_rate: 70.0
-      ki_yaw_rate: 15.0
-      omega_yaw_i_max: 30.0
-      omega_rp_i_max: 500.0
+    posCtlPid:
+      xKp: 2.0
+      xKi: 0.0
+      xKd: 0.0
+      yKp: 2.0
+      yKi: 0.0
+      yKd: 0.0
+      zKp: 2.0
+      zKi: 0.5
+      zKd: 0.0
+    # ctrlAtt:
+    #   kp_rp_rate: 150.0   # 150.0 works good for hover
+    #   ki_rp_rate: 20.0    # 20.0 works good for hover
+    #   kp_yaw_rate: 70.0
+    #   ki_yaw_rate: 15.0
+    #   omega_yaw_i_max: 30.0
+    #   omega_rp_i_max: 500.0
   broadcasts:
     num_repeats: 15 # number of times broadcast commands are repeated
     delay_between_repeats_ms: 1 # delay in milliseconds between individual repeats

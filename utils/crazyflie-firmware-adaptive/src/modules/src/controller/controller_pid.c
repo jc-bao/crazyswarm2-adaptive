@@ -63,6 +63,8 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
 //   DEBUG_PRINT("controllerPid\n");
   control->controlMode = controlModeLegacy;
 
+
+  // Attitude control
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
     // Rate-controled YAW is moving YAW angle setpoint
     if (setpoint->mode.yaw == modeVelocity) {
@@ -93,10 +95,12 @@ void controllerPid(control_t *control, const setpoint_t *setpoint,
     attitudeDesired.yaw = capAngle(attitudeDesired.yaw);
   }
 
+  // Position control
   if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
     positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
   }
 
+  // Attitude control
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
     // Switch between manual and automatic position control
     if (setpoint->mode.z == modeDisable) {

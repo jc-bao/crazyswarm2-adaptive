@@ -71,7 +71,9 @@ def main():
     timeHelper.sleep(2.0)
 
     print('Executing trajectory...')
+    cf.setParam('usd.logging', 1)
     executeTrajectory(timeHelper, cf, "/home/pcy/Research/code/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/data/figure8.csv", rate, offset=np.array([0, 0.0, Z]), tf_buffer=tf_buffer)
+    cf.setParam('usd.logging', 0)
 
     print('go to initial position...')
     cf.goTo(np.array([0.0, 0.0, 0.5]), 0.0, 2.0)
