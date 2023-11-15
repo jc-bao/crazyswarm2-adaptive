@@ -20,7 +20,7 @@ class Crazyflie:
         np.set_printoptions(precision=3, suppress=True)
         
         # parameters
-        self.world_center = np.array([0.0, 0.0, 1.0])
+        self.world_center = np.array([0.0, 0.0, 2.0])
         self.mass = 0.027
         self.g = 9.81
         self.command_timelimit = 10.0
@@ -61,10 +61,10 @@ class Crazyflie:
             m=self.mass, 
             g=self.g, max_thrust=10.0, 
             max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
-            Kp=np.array([1.0, 1.0, 1.0])*2.0, 
-            Kd=np.array([1.0, 1.0, 1.5])*2.0, 
-            Ki=np.array([1.0, 1.0, 10.0])*0.06,
-            Kp_att=np.array([1.0, 1.0, 1.0])*0.04,
+            Kp=np.array([1.0, 1.0, 1.0])*6.0, 
+            Kd=np.array([1.0, 1.0, 1.5])*4.0, 
+            Ki=np.array([1.0, 1.0, 1.0])*3.0,
+            Kp_att=np.array([1.0, 1.0, 1.0])*0.10,
             # Kp_att=np.array([1.0, 1.0, 1.0])*0.040,
             Ki_att=np.array([1.0, 1.0, 1.0])*0.004,
             dt = 1.0/self.rate)
@@ -257,14 +257,15 @@ class Crazyflie:
         traj = Path()
         traj.header.frame_id = "map"
         
-        base_w = 2 * np.pi / 8.0
-        t = np.arange(0, int(5.0*self.rate)) / self.rate
+        T = 8.0
+        base_w = 2 * np.pi / T
+        t = np.arange(0, int(2*T*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((len(t), 3))
         traj_vxyz = np.zeros((len(t), 3))
-        A = np.array([0.5, 0.5, 0.0])
+        A = np.array([0.0, 0.5, 0.5])
         w = np.array([base_w, base_w, base_w*2.0])
-        phase = np.array([np.pi/2,0.0,np.pi])
+        phase = np.array([0.0,0.0,0.0])
         traj_xyz = A * np.sin(t*w+phase)
         traj_vxyz = w * A * np.cos(t*w+phase)
 
@@ -314,6 +315,8 @@ class Crazyflie:
     
 def main():
 
+    flag = False
+
     cfctl = Crazyflie()
 
     cfctl.enable_logging()
@@ -328,6 +331,10 @@ def main():
             cfctl.get_drone_target()
             action = cfctl.pid_controller() * 1.0
             cfctl.step(action)
+
+            if cfctl.state.pos[2] > 0.5 and flag == False:
+                flag = True
+                time.sleep(0.1)
 
 
     except KeyboardInterrupt:

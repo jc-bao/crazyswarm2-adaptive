@@ -1,0 +1,19 @@
+1     # version
+2048   # buffer size in bytes
+log   # file name
+0     # enable on startup (0/1)
+on:fixedFrequency
+250     # frequency
+1     # mode (0: disabled, 1: synchronous stabilizer, 2: asynchronous)
+gyro.x
+gyro.y
+gyro.z
+ctrltarget.rollRate
+ctrltarget.pitchRate
+ctrltarget.yawRate
+ctrlRwik.r_roll
+ctrlRwik.r_pitch
+ctrlRwik.r_yaw
+ctrlRwik.angVel_x
+ctrlRwik.angVel_y
+ctrlRwik.angVel_z

@@ -6,9 +6,6 @@ import numpy as np
 def main():
     # load data
     data = cfusdlog.decode('/home/pcy/Research/code/crazyswarm2-adaptive/utils/scripts/log')['fixedFrequency']
-    # convert to numpy arrays
-    # for k, v in data.items():
-    #     data[k] = np.array(v)
     # set seaborn style
     sns.set()
     # prepare data
