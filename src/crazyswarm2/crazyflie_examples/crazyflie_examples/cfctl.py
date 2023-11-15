@@ -13,6 +13,7 @@ import pickle
 from copy import deepcopy
 from line_profiler import LineProfiler
 import time
+from dataclasses import dataclass
 
 
 def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
@@ -21,22 +22,22 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     """
     # generate take off trajectory
     target_pos = np.array([0.0, 0.0, 0.0])
-    t_takeoff = 3.0
+    t_takeoff = 5.0
     N_takeoff = int(t_takeoff / dt)
     pos_takeoff = np.linspace(init_pos, target_pos, N_takeoff)
-    vel_takeoff = (target_pos - init_pos) / t_takeoff
-    acc_takeoff = np.zeros(3)
+    vel_takeoff = np.ones_like(pos_takeoff) * (target_pos - init_pos) / t_takeoff
+    acc_takeoff = np.zeros_like(pos_takeoff)
 
     # stablize for 1 second
-    t_stablize = 1.0
+    t_stablize = 1.5
     N_stablize = int(t_stablize / dt)
     pos_stablize = np.ones((N_stablize, 3)) * target_pos
-    vel_stablize = np.zeros(3)
-    acc_stablize = np.zeros(3)
+    vel_stablize = np.zeros_like(pos_stablize)
+    acc_stablize = np.zeros_like(pos_stablize)
 
     # generate main task trajectory
     scale = 1.0
-    T = 5
+    T = 10.0
     w0 = 2 * np.pi / T
     w1 = w0 * 2
 
@@ -46,9 +47,9 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_main = np.zeros((len(t), 3))
 
     # generate figure 8 trajectory
-    pos_main[:, 1] = scale * np.sin(w0 * t)
-    vel_main[:, 1] = scale * w0 * np.cos(w0 * t)
-    acc_main[:, 1] = -scale * w0**2 * np.sin(w0 * t)
+    pos_main[:, 1] = 2*scale * np.sin(w0 * t)
+    vel_main[:, 1] = 2*scale * w0 * np.cos(w0 * t)
+    acc_main[:, 1] = -2*scale * w0**2 * np.sin(w0 * t)
     pos_main[:, 2] = scale * np.sin(w1 * t)
     vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
     acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
@@ -56,7 +57,7 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # generate landing trajectory by inverse the takeoff trajectory
     pos_landing = pos_takeoff[::-1]
     vel_landing = -vel_takeoff[::-1]
-    acc_landing = np.zeros(3)
+    acc_landing = -acc_takeoff[::-1]
 
     # concatenate all trajectories
     pos = np.concatenate(
@@ -153,6 +154,7 @@ def do_profile(follow=[]):
     return inner
 
 
+@dataclass
 class EnvState3D:
     # meta state variable for taut state
     pos: np.ndarray  # (x,y,z)
@@ -190,7 +192,7 @@ class EnvState3D:
     omega_hist: np.ndarray
     action_hist: np.ndarray
 
-
+@dataclass
 class EnvParams3D:
     max_speed: float = 8.0
     max_torque: np.ndarray = np.array([9e-3, 9e-3, 2e-3])
@@ -250,12 +252,12 @@ class EnvParams3D:
     # noise related parameters
     dyn_noise_scale: float = 0.05
 
-
+@dataclass
 class PIDParams:
-    Kp: float = 6.0
+    Kp: float = 8.0
     Kd: float = 4.0
     Ki: float = 3.0
-    Kp_att: float = 0.004
+    Kp_att: float = 0.1
 
     integral: np.ndarray = np.array([0.0, 0.0, 0.0])
     quat_desired: np.ndarray = np.array([0.0, 0.0, 0.0, 1.0])
@@ -317,7 +319,7 @@ class PIDController:
         control_params.integral = integral
         control_params.quat_desired = quat_desired
 
-        return action, control_params, None
+        return action, control_params, {}
 
 
 class Crazyflie:
@@ -343,7 +345,7 @@ class Crazyflie:
 
         # base controller: PID
         self.control_params = PIDParams()
-        self.controller = PIDController(self.env_params, self.base_control_params)
+        self.controller = PIDController(self.env_params, self.control_params)
 
         # ROS related initialization
         self.pos = np.zeros(3)
@@ -389,13 +391,15 @@ class Crazyflie:
 
         # establish connection
         # NOTE use this to estabilish connection
-        for _ in range(10):
+        for _ in range(20):
             self.set_attirate(np.zeros(3), 0.0)
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0)
 
         # initialize state
+        assert not np.allclose(self.pos_kf, np.zeros(3)), "Drone initial position not updated"
+        pos, quat = self.get_drone_state()
         self.pos_traj, self.vel_traj, self.acc_traj = generate_smooth_traj(
-            self.pos_kf, self.dt
+            pos, self.dt
         )
         self.state_real = self.get_real_state()
         # publish trajectory
@@ -489,9 +493,6 @@ class Crazyflie:
         quat = self.quat_kf
         # get timestamp
         # return np.array([pos.x, pos.y, pos.z]) - self.world_center, np.array([quat.x, quat.y, quat.z, quat.w])
-        if self.enable_logging:
-            self.log[-1]["pos_kf"] = pos
-            self.log[-1]["quat_kf"] = quat
 
         return np.array(pos - self.world_center), np.array(quat)
 
@@ -526,6 +527,7 @@ class Crazyflie:
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
 
         # update real-world state
+        self.timestep += 1
         pos, quat = self.get_drone_state()
         self.pos_hist = np.concatenate([self.pos_hist[1:], pos.reshape(1, 3)], axis=0)
         self.quat_hist = np.concatenate(
