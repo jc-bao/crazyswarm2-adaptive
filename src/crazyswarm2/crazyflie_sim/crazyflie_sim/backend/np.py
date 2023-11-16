@@ -1,35 +1,21 @@
 from __future__ import annotations
 
-from rclpy.node import Node
-from rosgraph_msgs.msg import Clock
-from rclpy.time import Time
-from ..sim_data_types import State, Action
-# import ROS messages for publishing rpm
-from std_msgs.msg import Float32MultiArray, Float32
-
 import numpy as np
+from rclpy.node import Node
+from rclpy.time import Time
+from rosgraph_msgs.msg import Clock
 import rowan
 
+from ..sim_data_types import Action, State
+
+
 class Backend:
-    """Backend that uses newton-euler rigid-body dynamics implemented in numpy"""
+    """Backend that uses newton-euler rigid-body dynamics implemented in numpy."""
 
     def __init__(self, node: Node, names: list[str], states: list[State]):
         self.node = node
         self.names = names
         self.clock_publisher = node.create_publisher(Clock, 'clock', 10)
-
-        # debug publisher
-        # publish rpm to the rpm topic with message type float array 
-        self.rpm_publisher = node.create_publisher(Float32MultiArray, 'rpm', 10)
-        # publish tau_u
-        self.tau_u_publisher = node.create_publisher(Float32MultiArray, 'torque_applied', 10)
-        self.tau_u_d_publisher = node.create_publisher(Float32MultiArray, 'torque_desired', 10)
-        # publish f_u
-        self.f_u_publisher = node.create_publisher(Float32, 'thrust_applied', 10)
-        self.f_u_d_publisher = node.create_publisher(Float32, 'thrust_desired', 10)
-        # publish omega
-        self.omega_publisher = node.create_publisher(Float32MultiArray, 'omega', 10)
-
         self.t = 0
         self.dt = 0.0005
 
@@ -41,32 +27,17 @@ class Backend:
     def time(self) -> float:
         return self.t
 
-    def step(self, states_desired: list[State], actions: list[Action], infos: list[dict]) -> list[State]:
+    def step(self, states_desired: list[State], actions: list[Action]) -> list[State]:
         # advance the time
         self.t += self.dt
 
         next_states = []
 
-        for uav, action, info in zip(self.uavs, actions, infos):
-            
-            normed_rpm = []
-            for rpm in action.rpm:
-                normed_rpm.append(rpm / (25e3-1))
-                # if normed_rpm[-1] > 0.99:
-                #     print(f"WARNING: RPM is too high, was {normed_rpm}")
-            # publish normed_rpm
-            rpm_message = Float32MultiArray()
-            rpm_message.data = normed_rpm
-            self.rpm_publisher.publish(rpm_message)
-            self.tau_u_publisher.publish(Float32MultiArray(data=uav.tau_u))
-            self.tau_u_d_publisher.publish(Float32MultiArray(data=info['torque_desired']))
-            self.f_u_publisher.publish(Float32(data=uav.f_u))
-            self.f_u_d_publisher.publish(Float32(data=info['thrust_desired']))
-            self.omega_publisher.publish(Float32MultiArray(data=uav.state.omega))
-
-            uav.step(action, self.dt, info)
+        for uav, action in zip(self.uavs, actions):
+            uav.step(action, self.dt)
             next_states.append(uav.state)
 
+        # print(states_desired, actions, next_states)
         # publish the current clock
         clock_message = Clock()
         clock_message.clock = Time(seconds=self.time()).to_msg()
@@ -79,11 +50,11 @@ class Backend:
 
 
 class Quadrotor:
-    """Basic rigid body quadrotor model (no drag) using numpy and rowan"""
+    """Basic rigid body quadrotor model (no drag) using numpy and rowan."""
 
     def __init__(self, state):
         # parameters (Crazyflie 2.0 quadrotor)
-        self.mass = 0.027 # kg
+        self.mass = 0.034  # kg
         # self.J = np.array([
         # 	[16.56,0.83,0.71],
         # 	[0.83,16.66,1.8],
@@ -92,30 +63,25 @@ class Quadrotor:
         self.J = np.array([16.571710e-6, 16.655602e-6, 29.261652e-6])
 
         # Note: we assume here that our control is forces
-        arm_length = 0.046 # m
+        arm_length = 0.046  # m
         arm = 0.707106781 * arm_length
-        t2t = 0.006 # thrust-to-torque ratio
+        t2t = 0.006  # thrust-to-torque ratio
         self.B0 = np.array([
             [1, 1, 1, 1],
             [-arm, -arm, arm, arm],
             [-arm, arm, arm, -arm],
             [-t2t, t2t, -t2t, t2t]
             ])
-        self.g = 9.81 # not signed
+        self.g = 9.81  # not signed
 
-        if self.J.shape == (3,3):
-            self.inv_J = np.linalg.pinv(self.J) # full matrix -> pseudo inverse
+        if self.J.shape == (3, 3):
+            self.inv_J = np.linalg.pinv(self.J)  # full matrix -> pseudo inverse
         else:
-            self.inv_J = 1 / self.J # diagonal matrix -> division
+            self.inv_J = 1 / self.J  # diagonal matrix -> division
 
         self.state = state
 
-        # debug state
-        self.f_u = 0.0
-        self.tau_u = np.zeros(3)
-        self.alpha = np.zeros(3)
-
-    def step(self, action, dt, info=None):
+    def step(self, action, dt):
 
         # convert RPM -> Force
         def rpm_to_force(rpm):
@@ -129,32 +95,28 @@ class Quadrotor:
 
         # compute next state
         eta = np.dot(self.B0, force)
-        f_u = np.array([0,0,eta[0]])
-        tau_u = np.array([eta[1],eta[2],eta[3]])
+        f_u = np.array([0, 0, eta[0]])
+        tau_u = np.array([eta[1], eta[2], eta[3]])
 
-        # DEBUG
-        tau_u = info['torque_desired']
-        f_u[2] = info['thrust_desired']
-
-        self.tau_u = tau_u
-        self.f_u = f_u[2]
-
-
-        # dynamics 
-        # dot{p} = v 
+        # dynamics
+        # dot{p} = v
         pos_next = self.state.pos + self.state.vel * dt
-        # mv = mg + R f_u 
-        vel_next = self.state.vel + (np.array([0,0,-self.g]) + rowan.rotate(self.state.quat,f_u) / self.mass) * dt
+        # mv = mg + R f_u
+        vel_next = self.state.vel + (
+            np.array([0, 0, -self.g]) +
+            rowan.rotate(self.state.quat, f_u) / self.mass) * dt
 
         # dot{R} = R S(w)
         # to integrate the dynamics, see
         # https://www.ashwinnarayan.com/post/how-to-integrate-quaternions/, and
         # https://arxiv.org/pdf/1604.08139.pdf
-        q_next = rowan.normalize(rowan.calculus.integrate(self.state.quat, self.state.omega, dt))
+        q_next = rowan.normalize(
+            rowan.calculus.integrate(
+                self.state.quat, self.state.omega, dt))
 
-        # mJ = Jw x w + tau_u 
-        self.alpha =(self.inv_J * (np.cross(self.J * self.state.omega, self.state.omega) + tau_u))
-        omega_next = self.state.omega + self.alpha * dt
+        # mJ = Jw x w + tau_u
+        omega_next = self.state.omega + (
+            self.inv_J * (np.cross(self.J * self.state.omega, self.state.omega) + tau_u)) * dt
 
         self.state.pos = pos_next
         self.state.vel = vel_next
@@ -164,5 +126,5 @@ class Quadrotor:
         # if we fall below the ground, set velocities to 0
         if self.state.pos[2] < 0:
             self.state.pos[2] = 0
-            self.state.vel = [0,0,0]
-            self.state.omega = [0,0,0]
+            self.state.vel = [0, 0, 0]
+            self.state.omega = [0, 0, 0]

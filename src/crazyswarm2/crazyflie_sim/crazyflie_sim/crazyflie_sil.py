@@ -267,18 +267,18 @@ class CrazyflieSIL:
     #     # simulate this behavior.
     #     pass
 
-    def cmdFullStateNew(self, pos, vel, acc, yaw, omega):
-        self.mode = CrazyflieSIL.MODE_LOW_FULLSTATE
-        self.setpoint.attitudeRate.roll = np.degrees(omega[0])
-        self.setpoint.attitudeRate.pitch = np.degrees(omega[1])
-        self.setpoint.attitudeRate.yaw = np.degrees(omega[2])
-        self.mode.x = firm.modeDisable
-        self.mode.y = firm.modeDisable
-        self.mode.z = firm.modeDisable
-        self.mode.roll = firm.modeVelocity
-        self.mode.pitch = firm.modeVelocity
-        self.mode.yaw = firm.modeVelocity
-        self.mode.quat = firm.modeDisable
+    # def cmdFullStateNew(self, pos, vel, acc, yaw, omega):
+    #     self.mode = CrazyflieSIL.MODE_LOW_FULLSTATE
+    #     self.setpoint.attitudeRate.roll = np.degrees(omega[0])
+    #     self.setpoint.attitudeRate.pitch = np.degrees(omega[1])
+    #     self.setpoint.attitudeRate.yaw = np.degrees(omega[2])
+    #     self.mode.x = firm.modeDisable
+    #     self.mode.y = firm.modeDisable
+    #     self.mode.z = firm.modeDisable
+    #     self.mode.roll = firm.modeVelocity
+    #     self.mode.pitch = firm.modeVelocity
+    #     self.mode.yaw = firm.modeVelocity
+    #     self.mode.quat = firm.modeDisable
 
     def cmdFullState(self, pos, vel, acc, yaw, omega):
         self.mode = CrazyflieSIL.MODE_LOW_FULLSTATE

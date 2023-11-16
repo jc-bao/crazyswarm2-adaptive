@@ -180,7 +180,7 @@ class CrazyflieServer(Node):
             infos.append(info)
 
         # execute the physics simulator
-        states_next = self.backend.step(states_desired, actions, infos)
+        states_next = self.backend.step(states_desired, actions)
 
         # update the resulting state
         for state, (name, cf) in zip(states_next, self.cfs.items()):

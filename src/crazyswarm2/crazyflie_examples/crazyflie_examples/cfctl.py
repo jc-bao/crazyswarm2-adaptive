@@ -492,7 +492,7 @@ class Crazyflie:
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0)
 
         # initialize state
-        assert not np.allclose(self.pos_kf, np.zeros(3)), "Drone initial position not updated"
+        # assert not np.allclose(self.pos_kf, np.zeros(3)), "Drone initial position not updated"
         pos, quat = self.get_drone_state()
         self.pos_hist[-1] = pos
         self.quat_hist[-1] = quat
@@ -600,7 +600,7 @@ class Crazyflie:
         """
         # convert to degree
         omega_target = (
-            np.array(omega_target, dtype=np.float64) / np.pi * 180.0
+            np.array(omega_target, dtype=np.float64) #/ np.pi * 180.0
         )  # NOTE: make sure the type is float64
         acc_z_target = thrust_target / self.env_params.m
         self.cf.cmdFullState(
@@ -691,18 +691,19 @@ def main(enable_logging=True):
     env = Crazyflie(enable_logging=enable_logging)
 
     try:
-        env.cf.setParam("usd.logging", 1)
+        # env.cf.setParam("usd.logging", 1)
         state_real = env.state_real
         total_steps = env.pos_traj.shape[0]-1
         for timestep in range(total_steps):
-            action_mppi, env.mppi_control_params, mppi_control_info = env.mppi_controller(
-                None, state_real, env.env_params, None, env.mppi_control_params, None
-            )
+            # action_mppi, env.mppi_control_params, mppi_control_info = env.mppi_controller(
+            #     None, state_real, env.env_params, None, env.mppi_control_params, None
+            # )
             action, env.control_params, control_info = env.controller(
                 None, state_real, env.env_params, None, env.control_params, None
             )
-            k = timestep / total_steps
-            action = action_mppi * k + action * (1 - k)
+            # k = timestep / total_steps
+            # action = action_mppi * k + action * (1 - k)
+            action = np.zeros(4)
             obs_real, state_real, reward_real, done_real, info_real = env.step(action)
             env.log.append(control_info)
         for _ in range(50):
@@ -710,7 +711,7 @@ def main(enable_logging=True):
     except KeyboardInterrupt:
         pass
     finally:
-        env.cf.setParam("usd.logging", 0)
+        # env.cf.setParam("usd.logging", 0)
         with open(env.log_path, "wb") as f:
             pickle.dump(env.log, f)
         print("log saved to", env.log_path)
