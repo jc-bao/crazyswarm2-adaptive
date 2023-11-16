@@ -61,7 +61,7 @@ class Crazyflie:
             m=self.mass, 
             g=self.g, max_thrust=10.0, 
             max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
-            Kp=np.array([1.0, 1.0, 1.0])*6.0, 
+            Kp=np.array([1.0, 1.0, 1.0])*8.0, 
             Kd=np.array([1.0, 1.0, 1.5])*4.0, 
             Ki=np.array([1.0, 1.0, 1.0])*3.0,
             Kp_att=np.array([1.0, 1.0, 1.0])*0.10,
@@ -258,13 +258,13 @@ class Crazyflie:
         traj.header.frame_id = "map"
         
         T = 8.0
-        base_w = 2 * np.pi / T
+        base_w = 4 * np.pi / T
         t = np.arange(0, int(2*T*self.rate)) / self.rate
         t = np.tile(t, (3,1)).transpose()
         traj_xyz = np.zeros((len(t), 3))
         traj_vxyz = np.zeros((len(t), 3))
-        A = np.array([0.0, 0.5, 0.5])
-        w = np.array([base_w, base_w, base_w*2.0])
+        A = np.array([0.5, -0.5, 0.5])
+        w = np.array([base_w, base_w*1.5, base_w*2.0])
         phase = np.array([0.0,0.0,0.0])
         traj_xyz = A * np.sin(t*w+phase)
         traj_vxyz = w * A * np.cos(t*w+phase)
@@ -331,10 +331,6 @@ def main():
             cfctl.get_drone_target()
             action = cfctl.pid_controller() * 1.0
             cfctl.step(action)
-
-            if cfctl.state.pos[2] > 0.5 and flag == False:
-                flag = True
-                time.sleep(0.1)
 
 
     except KeyboardInterrupt:

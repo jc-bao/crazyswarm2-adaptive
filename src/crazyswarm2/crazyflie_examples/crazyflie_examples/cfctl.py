@@ -20,17 +20,26 @@ import jax, chex
 from jax import lax
 from jax import numpy as jnp
 from quadjax import controllers
-from quadjax.envs.quad3d_free import Quad3D, EnvState3D as EnvState3DJax, EnvParams3D as EnvParams3DJax, Action3D as Action3DJax
+from quadjax.envs.quad3d_free import (
+    Quad3D,
+    EnvState3D as EnvState3DJax,
+    EnvParams3D as EnvParams3DJax,
+    Action3D as Action3DJax,
+)
 from quadjax.dynamics import utils
 from quadjax import dynamics as quad_dyn
 
+
 class Quad3DLite:
-    '''
+    """
     simplified version of quad3d
-    '''
+    """
+
     def __init__(self) -> None:
         self.sim_dt = 0.02
-        self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(disturb_type='none')
+        self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(
+            disturb_type="none"
+        )
 
     @partial(jax.jit, static_argnums=(0,))
     def step_env_wocontroller(
@@ -48,26 +57,77 @@ class Quad3DLite:
         next_state = self.step_fn(params, state, env_action, key, self.sim_dt)
         reward = utils.tracking_realworld_reward_fn(next_state)
         return 0.0, next_state, reward, False, {}
-    
-class MPPIController(controllers.MPPIController):
-    def __init__(self, env, control_params, N: int, H: int, lam: float) -> None:
-        self.env_params = EnvParams3DJax(alpha_bodyrate=0.5)
+
+
+class CoVOController(controllers.MPPIZejiController):
+    def __init__(
+        self, env, control_params, N: int, H: int, lam: float, mode: str = "online"
+    ) -> None:
+        self.env_params = EnvParams3DJax(alpha_bodyrate=0.2)
         self.key = jax.random.PRNGKey(0)
-        super().__init__(env, control_params, N, H, lam)
-    
-    def __call__(self, obs, state, env_params, rng_act: chex.PRNGKey, control_params: controllers.MPPIParams, info = None) -> jnp.ndarray:
+        if mode == "online":
+            expansion_mode == "mean"
+        elif mode == "offline":
+            expansion_mode == "pid"
+        else:
+            raise NotImplementedError
+        super().__init__(env, control_params, N, H, lam, expansion_mode)
+
+    def __call__(
+        self,
+        obs,
+        state,
+        env_params,
+        rng_act: chex.PRNGKey,
+        control_params: controllers.MPPIParams,
+        info=None,
+    ) -> jnp.ndarray:
         # convert state to jax
         state_dict = state.__dict__
         state_dict_jax = {}
         for k, v in state_dict.items():
             state_dict_jax[k] = jnp.array(v)
-        state_dict_jax['control_params'] = control_params
+        state_dict_jax["control_params"] = control_params
         state_jax = EnvState3DJax(**state_dict_jax)
         # get env_params_jax
         env_params_jax = self.env_params
         # get key
         self.key, rng_act = jax.random.split(self.key)
-        return super().__call__(obs, state_jax, env_params_jax, rng_act, control_params, info)
+        return super().__call__(
+            obs, state_jax, env_params_jax, rng_act, control_params, info
+        )
+
+
+class MPPIController(controllers.MPPIController):
+    def __init__(self, env, control_params, N: int, H: int, lam: float) -> None:
+        self.env_params = EnvParams3DJax(alpha_bodyrate=0.2)
+        self.key = jax.random.PRNGKey(0)
+        super().__init__(env, control_params, N, H, lam)
+
+    def __call__(
+        self,
+        obs,
+        state,
+        env_params,
+        rng_act: chex.PRNGKey,
+        control_params: controllers.MPPIParams,
+        info=None,
+    ) -> jnp.ndarray:
+        # convert state to jax
+        state_dict = state.__dict__
+        state_dict_jax = {}
+        for k, v in state_dict.items():
+            state_dict_jax[k] = jnp.array(v)
+        state_dict_jax["control_params"] = control_params
+        state_jax = EnvState3DJax(**state_dict_jax)
+        # get env_params_jax
+        env_params_jax = self.env_params
+        # get key
+        self.key, rng_act = jax.random.split(self.key)
+        return super().__call__(
+            obs, state_jax, env_params_jax, rng_act, control_params, info
+        )
+
 
 def get_mppi_controller():
     sigma = 0.5
@@ -79,13 +139,13 @@ def get_mppi_controller():
     m = 0.027
     g = 9.81
     max_thrust = 0.8
-    action_dim=4
+    action_dim = 4
 
     thrust_hover = m * g
     thrust_hover_normed = (thrust_hover / max_thrust) * 2.0 - 1.0
     a_mean_per_step = jnp.array([thrust_hover_normed, 0.0, 0.0, 0.0])
     a_mean = jnp.tile(a_mean_per_step, (H, 1))
-    
+
     a_cov_per_step = jnp.diag(jnp.array([sigma**2] * action_dim))
     a_cov = jnp.tile(a_cov_per_step, (H, 1, 1))
     control_params = controllers.MPPIParams(
@@ -100,6 +160,7 @@ def get_mppi_controller():
         env=env, control_params=control_params, N=N, H=H, lam=lam
     )
     return controller, control_params
+
 
 def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     """
@@ -121,7 +182,7 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_stablize = np.zeros_like(pos_stablize)
 
     # generate main task trajectory
-    scale = 1.0
+    scale = 0.5
     T = 10.0
     w0 = 2 * np.pi / T
     w1 = w0 * 2
@@ -132,9 +193,9 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_main = np.zeros((len(t), 3))
 
     # generate figure 8 trajectory
-    pos_main[:, 1] = 2*scale * np.sin(w0 * t)
-    vel_main[:, 1] = 2*scale * w0 * np.cos(w0 * t)
-    acc_main[:, 1] = -2*scale * w0**2 * np.sin(w0 * t)
+    pos_main[:, 1] = 2 * scale * np.sin(w0 * t)
+    vel_main[:, 1] = 2 * scale * w0 * np.cos(w0 * t)
+    acc_main[:, 1] = -2 * scale * w0**2 * np.sin(w0 * t)
     pos_main[:, 2] = scale * np.sin(w1 * t)
     vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
     acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
@@ -154,15 +215,9 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # acc = np.concatenate(
     #     [acc_takeoff, acc_stablize, acc_main, acc_stablize, acc_landing], axis=0
     # )
-    pos = np.concatenate(
-        [pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0
-    )
-    vel = np.concatenate(
-        [vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0
-    )
-    acc = np.concatenate(
-        [acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0
-    )
+    pos = np.concatenate([pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
+    vel = np.concatenate([vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
+    acc = np.concatenate([acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
 
     return pos, vel, acc
 
@@ -286,6 +341,7 @@ class EnvState3D:
     omega_hist: np.ndarray
     action_hist: np.ndarray
 
+
 @dataclass
 class EnvParams3D:
     max_speed: float = 8.0
@@ -346,12 +402,13 @@ class EnvParams3D:
     # noise related parameters
     dyn_noise_scale: float = 0.05
 
+
 @dataclass
 class PIDParams:
     Kp: float = 8.0
     Kd: float = 4.0
     Ki: float = 3.0
-    Kp_att: float = 0.1
+    Kp_att: float = 6.0
 
     integral: np.ndarray = np.array([0.0, 0.0, 0.0])
     quat_desired: np.ndarray = np.array([0.0, 0.0, 0.0, 1.0])
@@ -430,7 +487,7 @@ class Crazyflie:
         self.adapt_horizon = 10
 
         # real-world parameters
-        self.world_center = np.array([0.0, 0.0, 2.0])
+        self.world_center = np.array([0.0, 0.0, 1.5])
         self.xyz_min = np.array([-3.0, -3.0, -3.0])
         self.xyz_max = np.array([3.0, 3.0, 2.0])
 
@@ -492,13 +549,13 @@ class Crazyflie:
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0)
 
         # initialize state
-        # assert not np.allclose(self.pos_kf, np.zeros(3)), "Drone initial position not updated"
+        assert not np.allclose(
+            self.pos_kf, np.zeros(3)
+        ), "Drone initial position not updated"
         pos, quat = self.get_drone_state()
         self.pos_hist[-1] = pos
         self.quat_hist[-1] = quat
-        self.pos_traj, self.vel_traj, self.acc_traj = generate_smooth_traj(
-            pos, self.dt
-        )
+        self.pos_traj, self.vel_traj, self.acc_traj = generate_smooth_traj(pos, self.dt)
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
@@ -599,9 +656,10 @@ class Crazyflie:
         set attitude rate and thrust through crazyflie lib
         """
         # convert to degree
-        omega_target = (
-            np.array(omega_target, dtype=np.float64) #/ np.pi * 180.0
-        )  # NOTE: make sure the type is float64
+        # omega_target = (
+        #     np.array(omega_target, dtype=np.float64) / np.pi * 180.0 * 0.01
+        # )  # NOTE: make sure the type is float64
+        omega_target = np.array(omega_target, dtype=np.float64)
         acc_z_target = thrust_target / self.env_params.m
         self.cf.cmdFullState(
             np.zeros(3), np.zeros(3), np.array([0, 0, acc_z_target]), 0.0, omega_target
@@ -693,17 +751,21 @@ def main(enable_logging=True):
     try:
         # env.cf.setParam("usd.logging", 1)
         state_real = env.state_real
-        total_steps = env.pos_traj.shape[0]-1
+        total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
-            # action_mppi, env.mppi_control_params, mppi_control_info = env.mppi_controller(
-            #     None, state_real, env.env_params, None, env.mppi_control_params, None
-            # )
+            (
+                action_mppi,
+                env.mppi_control_params,
+                mppi_control_info,
+            ) = env.mppi_controller(
+                None, state_real, env.env_params, None, env.mppi_control_params, None
+            )
             action, env.control_params, control_info = env.controller(
                 None, state_real, env.env_params, None, env.control_params, None
             )
             # k = timestep / total_steps
-            # action = action_mppi * k + action * (1 - k)
-            action = np.zeros(4)
+            k = 1.0
+            action = action_mppi * k + action * (1 - k)
             obs_real, state_real, reward_real, done_real, info_real = env.step(action)
             env.log.append(control_info)
         for _ in range(50):
