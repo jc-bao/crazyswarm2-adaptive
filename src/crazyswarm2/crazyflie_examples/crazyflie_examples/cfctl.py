@@ -35,7 +35,7 @@ class Quad3DLite:
     """
 
     def __init__(self) -> None:
-        self.default_params = EnvParams3DJax(alpha_bodyrate=0.2, alpha_thrust=1.0)
+        self.default_params = EnvParams3DJax(alpha_bodyrate=0.2, alpha_thrust=1.0, m=0.0451)
         self.sim_dt = 0.02
         self.action_dim = 4
         self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(
@@ -186,7 +186,7 @@ def get_mppi_controller():
     lam = 5e-2
 
     env = Quad3DLite()
-    m = 0.027
+    m = 0.0451 # 0.027
     g = 9.81
     max_thrust = 0.8
 
@@ -436,7 +436,7 @@ class EnvParams3D:
     dt: float = 0.02
     g: float = 9.81  # gravity
 
-    m: float = 0.027  # mass
+    m: float = 0.0451  # mass
     m_mean: float = 0.027  # mass
     m_std: float = 0.003  # mass
 
