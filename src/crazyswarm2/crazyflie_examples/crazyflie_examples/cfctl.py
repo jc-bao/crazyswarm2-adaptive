@@ -41,6 +41,7 @@ class Quad3DLite:
         self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(
             disturb_type="none"
         )
+        self.step_env = self.step_env_wocontroller
         self.step_env_wocontroller_gradient = self.step_env_wocontroller
         self.reward_fn = utils.tracking_realworld_reward_fn
         self.get_obs = lambda s, p: 0.0
@@ -194,29 +195,29 @@ def get_mppi_controller():
     a_mean_per_step = jnp.array([thrust_hover_normed, 0.0, 0.0, 0.0])
     a_mean = jnp.tile(a_mean_per_step, (H, 1))
 
-    # a_cov_per_step = jnp.diag(jnp.array([sigma**2] * action_dim))
-    # a_cov = jnp.tile(a_cov_per_step, (H, 1, 1))
-    # control_params = controllers.MPPIParams(
-    #     gamma_mean=1.0,
-    #     gamma_sigma=0.0,
-    #     discount=1.0,
-    #     sample_sigma=sigma,
-    #     a_mean=a_mean,
-    #     a_cov=a_cov,
-    #     obs_noise_scale=0.05, 
-    # )
-
-    a_cov = jnp.diag(jnp.ones(H*env.action_dim)*sigma**2)
-    control_params = controllers.MPPIZejiParams(
+    a_cov_per_step = jnp.diag(jnp.array([sigma**2] * env.action_dim))
+    a_cov = jnp.tile(a_cov_per_step, (H, 1, 1))
+    control_params = controllers.MPPIParams(
         gamma_mean=1.0,
         gamma_sigma=0.0,
         discount=1.0,
         sample_sigma=sigma,
         a_mean=a_mean,
         a_cov=a_cov,
-        a_cov_offline=jnp.zeros((1000, 128, 128)), 
+        obs_noise_scale=0.05, 
     )
-    controller = CoVOController(
+
+    # a_cov = jnp.diag(jnp.ones(H*env.action_dim)*sigma**2)
+    # control_params = controllers.MPPIZejiParams(
+    #     gamma_mean=1.0,
+    #     gamma_sigma=0.0,
+    #     discount=1.0,
+    #     sample_sigma=sigma,
+    #     a_mean=a_mean,
+    #     a_cov=a_cov,
+    #     a_cov_offline=jnp.zeros((1000, 128, 128)), 
+    # )
+    controller = MPPIController(
         env=env, control_params=control_params, N=N, H=H, lam=lam
     )
     return controller, control_params
@@ -828,14 +829,14 @@ def main(enable_logging=True):
         # env.cf.setParam("usd.logging", 1)
         state_real = env.state_real
 
-        # update controller parameters
-        state_dict = state_real.__dict__
-        state_dict_jax = {}
-        for k, v in state_dict.items():
-            state_dict_jax[k] = jnp.array(v)
-        state_dict_jax["control_params"] = env.mppi_control_params
-        state_jax = EnvState3DJax(**state_dict_jax)
-        env.mppi_control_params = env.mppi_controller.reset(state_jax, env.mppi_controller.env_params, env.mppi_control_params, jax.random.PRNGKey(0))
+        # update controller parameters for CoVO controller only
+        # state_dict = state_real.__dict__
+        # state_dict_jax = {}
+        # for k, v in state_dict.items():
+        #     state_dict_jax[k] = jnp.array(v)
+        # state_dict_jax["control_params"] = env.mppi_control_params
+        # state_jax = EnvState3DJax(**state_dict_jax)
+        # env.mppi_control_params = env.mppi_controller.reset(state_jax, env.mppi_controller.env_params, env.mppi_control_params, jax.random.PRNGKey(0))
 
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
