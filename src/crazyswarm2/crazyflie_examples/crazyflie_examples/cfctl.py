@@ -29,17 +29,21 @@ from quadjax.envs.quad3d_free import (
 from quadjax.dynamics import utils
 from quadjax import dynamics as quad_dyn
 
-
 class Quad3DLite:
     """
     simplified version of quad3d
     """
 
     def __init__(self) -> None:
+        self.default_params = EnvParams3DJax(alpha_bodyrate=0.2, alpha_thrust=1.0)
         self.sim_dt = 0.02
+        self.action_dim = 4
         self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(
             disturb_type="none"
         )
+        self.step_env_wocontroller_gradient = self.step_env_wocontroller
+        self.reward_fn = utils.tracking_realworld_reward_fn
+        self.get_obs = lambda s, p: 0.0
 
     @partial(jax.jit, static_argnums=(0,))
     def step_env_wocontroller(
@@ -55,23 +59,24 @@ class Quad3DLite:
         torque = action[1:] * params.max_torque
         env_action = Action3DJax(thrust=thrust, torque=torque)
         next_state = self.step_fn(params, state, env_action, key, self.sim_dt)
-        reward = utils.tracking_realworld_reward_fn(next_state)
+        reward = self.reward_fn(next_state)
         return 0.0, next_state, reward, False, {}
 
 
 class CoVOController(controllers.MPPIZejiController):
     def __init__(
-        self, env, control_params, N: int, H: int, lam: float, mode: str = "online"
+        self, env, control_params, N: int, H: int, lam: float, mode: str = "offline"
     ) -> None:
-        self.env_params = EnvParams3DJax(alpha_bodyrate=0.2)
+        self.env_params = env.default_params
         self.key = jax.random.PRNGKey(0)
         if mode == "online":
-            expansion_mode == "mean"
+            expansion_mode = "mean"
         elif mode == "offline":
-            expansion_mode == "pid"
+            expansion_mode = "pid"
         else:
             raise NotImplementedError
         super().__init__(env, control_params, N, H, lam, expansion_mode)
+        self.last_action = jnp.zeros(4)
 
     def __call__(
         self,
@@ -93,15 +98,40 @@ class CoVOController(controllers.MPPIZejiController):
         env_params_jax = self.env_params
         # get key
         self.key, rng_act = jax.random.split(self.key)
-        return super().__call__(
+        action, control_params, control_info = super().__call__(
             obs, state_jax, env_params_jax, rng_act, control_params, info
         )
+        action = jnp.clip(action, -1.0, 1.0)
+
+        action_thrust = action[:1]
+        last_action_thrust = self.last_action[:1]
+        action_thrust_max = last_action_thrust + 0.2
+        action_thrust_min = last_action_thrust - 0.2
+        action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
+
+        action_omega = action[1:]
+        last_action_omega = self.last_action[1:]
+        action_omega_max = last_action_omega + 0.2
+        action_omega_min = last_action_omega - 0.2
+        action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
+
+        action = jnp.concatenate([action_thrust, action_omega], axis=0)
+
+        # action = 1.0 * action + 0.0 * self.last_action
+        self.last_action = action
+        return action, control_params, control_info
 
 
 class MPPIController(controllers.MPPIController):
     def __init__(self, env, control_params, N: int, H: int, lam: float) -> None:
-        self.env_params = EnvParams3DJax(alpha_bodyrate=0.2)
+        self.env_params = EnvParams3DJax(
+            alpha_bodyrate=0.2,
+            max_omega=jnp.array([4.0, 4.0, 2.0]),
+            max_thrust=0.8,
+            alpha_thrust=1.0,
+        )
         self.key = jax.random.PRNGKey(0)
+        self.last_action = jnp.zeros(4)
         super().__init__(env, control_params, N, H, lam)
 
     def __call__(
@@ -124,39 +154,69 @@ class MPPIController(controllers.MPPIController):
         env_params_jax = self.env_params
         # get key
         self.key, rng_act = jax.random.split(self.key)
-        return super().__call__(
+        action, control_params, control_info = super().__call__(
             obs, state_jax, env_params_jax, rng_act, control_params, info
         )
+        action = jnp.clip(action, -1.0, 1.0)
+
+        action_thrust = action[:1]
+        last_action_thrust = self.last_action[:1]
+        action_thrust_max = last_action_thrust + 0.2
+        action_thrust_min = last_action_thrust - 0.2
+        action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
+
+        action_omega = action[1:]
+        last_action_omega = self.last_action[1:]
+        action_omega_max = last_action_omega + 0.2
+        action_omega_min = last_action_omega - 0.2
+        action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
+
+        action = jnp.concatenate([action_thrust, action_omega], axis=0)
+
+        # action = 1.0 * action + 0.0 * self.last_action
+        self.last_action = action
+        return action, control_params, control_info
 
 
 def get_mppi_controller():
     sigma = 0.5
-    N = 2
+    N = 8192
     H = 32
-    lam = 1e-2
+    lam = 5e-2
 
     env = Quad3DLite()
     m = 0.027
     g = 9.81
     max_thrust = 0.8
-    action_dim = 4
 
     thrust_hover = m * g
     thrust_hover_normed = (thrust_hover / max_thrust) * 2.0 - 1.0
     a_mean_per_step = jnp.array([thrust_hover_normed, 0.0, 0.0, 0.0])
     a_mean = jnp.tile(a_mean_per_step, (H, 1))
 
-    a_cov_per_step = jnp.diag(jnp.array([sigma**2] * action_dim))
-    a_cov = jnp.tile(a_cov_per_step, (H, 1, 1))
-    control_params = controllers.MPPIParams(
+    # a_cov_per_step = jnp.diag(jnp.array([sigma**2] * action_dim))
+    # a_cov = jnp.tile(a_cov_per_step, (H, 1, 1))
+    # control_params = controllers.MPPIParams(
+    #     gamma_mean=1.0,
+    #     gamma_sigma=0.0,
+    #     discount=1.0,
+    #     sample_sigma=sigma,
+    #     a_mean=a_mean,
+    #     a_cov=a_cov,
+    #     obs_noise_scale=0.05, 
+    # )
+
+    a_cov = jnp.diag(jnp.ones(H*env.action_dim)*sigma**2)
+    control_params = controllers.MPPIZejiParams(
         gamma_mean=1.0,
         gamma_sigma=0.0,
         discount=1.0,
         sample_sigma=sigma,
         a_mean=a_mean,
         a_cov=a_cov,
+        a_cov_offline=jnp.zeros((1000, 128, 128)), 
     )
-    controller = MPPIController(
+    controller = CoVOController(
         env=env, control_params=control_params, N=N, H=H, lam=lam
     )
     return controller, control_params
@@ -166,16 +226,23 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     """
     generate a smooth trajectory with max_steps steps
     """
+    # generate still trajectory
+    pos_still = np.ones((100, 3)) * init_pos
+    pos_still[..., 2] -= 0.1 # NOTE: make sure the drone stay on the ground
+    vel_still = np.zeros_like(pos_still)
+    acc_still = np.zeros_like(pos_still)
+
     # generate take off trajectory
-    target_pos = np.array([0.0, 0.0, 0.0])
-    t_takeoff = 3.0
+    # target_pos = np.array([0.0, 0.0, 0.0])
+    target_pos = init_pos + np.array([0.0, 0.0, 1.0])
+    t_takeoff = 2.0
     N_takeoff = int(t_takeoff / dt)
     pos_takeoff = np.linspace(init_pos, target_pos, N_takeoff)
     vel_takeoff = np.ones_like(pos_takeoff) * (target_pos - init_pos) / t_takeoff
     acc_takeoff = np.zeros_like(pos_takeoff)
 
-    # stablize for 1.5 second
-    t_stablize = 1.5
+    # stablize for 2.0 second
+    t_stablize = 2.0
     N_stablize = int(t_stablize / dt)
     pos_stablize = np.ones((N_stablize, 3)) * target_pos
     vel_stablize = np.zeros_like(pos_stablize)
@@ -206,18 +273,21 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_landing = -acc_takeoff[::-1]
 
     # concatenate all trajectories
-    # pos = np.concatenate(
-    #     [pos_takeoff, pos_stablize, pos_main, pos_stablize, pos_landing], axis=0
-    # )
-    # vel = np.concatenate(
-    #     [vel_takeoff, vel_stablize, vel_main, vel_stablize, vel_landing], axis=0
-    # )
-    # acc = np.concatenate(
-    #     [acc_takeoff, acc_stablize, acc_main, acc_stablize, acc_landing], axis=0
-    # )
-    pos = np.concatenate([pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
-    vel = np.concatenate([vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
-    acc = np.concatenate([acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
+    pos = np.concatenate(
+        [pos_still, pos_takeoff, pos_stablize, pos_main, pos_stablize, pos_landing], axis=0
+    )
+    vel = np.concatenate(
+        [vel_still, vel_takeoff, vel_stablize, vel_main, vel_stablize, vel_landing], axis=0
+    )
+    acc = np.concatenate(
+        [acc_still, acc_takeoff, acc_stablize, acc_main, acc_stablize, acc_landing], axis=0
+    )
+    # pos = np.concatenate([pos_still, pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
+    # vel = np.concatenate([vel_still, vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
+    # acc = np.concatenate([acc_still, acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
+    # pos = np.ones((250, 3)) * init_pos
+    # vel = np.zeros_like(pos)
+    # acc = np.zeros_like(pos)
 
     return pos, vel, acc
 
@@ -346,7 +416,7 @@ class EnvState3D:
 class EnvParams3D:
     max_speed: float = 8.0
     max_torque: np.ndarray = np.array([9e-3, 9e-3, 2e-3])
-    max_omega: np.ndarray = np.array([10.0, 10.0, 3.0])
+    max_omega: np.ndarray = np.array([4.0, 4.0, 2.0])
     max_thrust: float = 0.8
     dt: float = 0.02
     g: float = 9.81  # gravity
@@ -382,7 +452,7 @@ class EnvParams3D:
     alpha_bodyrate_mean: float = 0.5
     alpha_bodyrate_std: float = 0.1
 
-    max_steps_in_episode: int = 300
+    max_steps_in_episode: int = 1000
     rope_taut_therehold: float = 1e-4
     traj_obs_len: int = 5
     traj_obs_gap: int = 5
@@ -544,7 +614,7 @@ class Crazyflie:
 
         # establish connection
         # NOTE use this to estabilish connection
-        for _ in range(20):
+        for _ in range(50):
             self.set_attirate(np.zeros(3), 0.0)
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0)
 
@@ -674,10 +744,16 @@ class Crazyflie:
         self.set_attirate(omega_tar, thrust_tar)
 
         # wait for next time step
-        next_time = (int((self.timeHelper.time()) / self.dt) + 1) * self.dt
+        last_discrete_time = int(self.last_control_time / self.dt)
+        discrete_time = int(self.timeHelper.time() / self.dt)
+        if discrete_time > (last_discrete_time + 1):
+            next_time = (discrete_time+1) * self.dt
+        else:
+            next_time = (last_discrete_time + 1) * self.dt
         delta_time = next_time - self.last_control_time
-        if delta_time > (self.dt + 1e-3):
-            print(f"WARNING: time difference is too large: {delta_time:.2f} s")
+        # if delta_time > (self.dt + 1e-3):
+        #     print(f"WARNING: time difference is too large: {delta_time:.2f} s")
+        print(f'frequncy: {(1.0 / delta_time):.2f} Hz')
         self.last_control_time = next_time
         while self.timeHelper.time() <= next_time:
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
@@ -751,6 +827,16 @@ def main(enable_logging=True):
     try:
         # env.cf.setParam("usd.logging", 1)
         state_real = env.state_real
+
+        # update controller parameters
+        state_dict = state_real.__dict__
+        state_dict_jax = {}
+        for k, v in state_dict.items():
+            state_dict_jax[k] = jnp.array(v)
+        state_dict_jax["control_params"] = env.mppi_control_params
+        state_jax = EnvState3DJax(**state_dict_jax)
+        env.mppi_control_params = env.mppi_controller.reset(state_jax, env.mppi_controller.env_params, env.mppi_control_params, jax.random.PRNGKey(0))
+
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
             (
@@ -760,14 +846,36 @@ def main(enable_logging=True):
             ) = env.mppi_controller(
                 None, state_real, env.env_params, None, env.mppi_control_params, None
             )
-            action, env.control_params, control_info = env.controller(
+            action_pid, env.control_params, control_info = env.controller(
                 None, state_real, env.env_params, None, env.control_params, None
             )
-            # k = timestep / total_steps
-            k = 1.0
-            action = action_mppi * k + action * (1 - k)
-            obs_real, state_real, reward_real, done_real, info_real = env.step(action)
-            env.log.append(control_info)
+            # add noise to PID to test system robustness
+            # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
+            # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
+            if timestep < 6 * 50:
+                k = 0.001
+            elif timestep < 16 * 50:
+                k = 1.0
+            else:
+                k = 0.001
+            action_applied = action_mppi * k + action_pid * (1 - k)
+            if timestep < 10:
+                # not control at the beginning to warm up the controller
+                action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_applied * 1e-4
+            obs_real, state_real, reward_real, done_real, info_real = env.step(
+                action_applied
+            )
+            log_info = {
+                "pos": state_real.pos,
+                "vel": state_real.vel,
+                "quat": state_real.quat,
+                "omega": state_real.omega,
+                "action_pid": action_pid,
+                "action_mppi": action_mppi,
+                "pos_tar": state_real.pos_tar,
+                "action_applied": action_applied,
+            }
+            env.log.append(log_info)
         for _ in range(50):
             env.set_attirate(np.zeros(3), 0.0)
     except KeyboardInterrupt:
