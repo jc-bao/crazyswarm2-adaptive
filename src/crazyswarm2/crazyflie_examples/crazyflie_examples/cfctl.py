@@ -235,7 +235,7 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
 
     # generate take off trajectory
     # target_pos = np.array([0.0, 0.0, 0.0])
-    target_pos = init_pos + np.array([0.0, 0.0, 1.0])
+    target_pos = np.array([0.0, 0.0, 0.0])
     t_takeoff = 2.0
     N_takeoff = int(t_takeoff / dt)
     pos_takeoff = np.linspace(init_pos, target_pos, N_takeoff)
@@ -267,6 +267,20 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     pos_main[:, 2] = scale * np.sin(w1 * t)
     vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
     acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
+
+    # generate triangle trajectory
+    # pos_key0 = np.array([0.0, 0.0, 0.0])
+    # pos_key1 = np.array([0.0, 1.0, np.sqrt(3)])*scale
+    # pos_key2 = np.array([0.0, -1.0, np.sqrt(3)])*scale
+    # # connect key points
+    # pos_main[:len(t)//3, :] = np.linspace(pos_key0, pos_key1, len(t)//3)
+    # pos_main[len(t)//3:2*len(t)//3, :] = np.linspace(pos_key1, pos_key2, len(t)//3+1)
+    # pos_main[2*len(t)//3:, :] = np.linspace(pos_key2, pos_key0, len(t)//3+1)
+    # # calculate velocity and acceleration
+    # vel_main[:len(t)//3, :] = (pos_key1 - pos_key0) / (len(t)//3) / dt
+    # vel_main[len(t)//3:2*len(t)//3, :] = (pos_key2 - pos_key1) / (len(t)//3) / dt
+    # vel_main[2*len(t)//3:, :] = (pos_key0 - pos_key2) / (len(t)//3) / dt
+    # acc_main[:len(t)//3, :] = np.zeros(3)
 
     # generate landing trajectory by inverse the takeoff trajectory
     pos_landing = pos_takeoff[::-1]
