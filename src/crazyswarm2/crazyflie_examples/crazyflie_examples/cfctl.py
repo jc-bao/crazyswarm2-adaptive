@@ -35,7 +35,7 @@ class Quad3DLite:
     """
 
     def __init__(self) -> None:
-        self.default_params = EnvParams3DJax(alpha_bodyrate=0.2, alpha_thrust=1.0, m=0.0451)
+        self.default_params = EnvParams3DJax(alpha_bodyrate=0.5, alpha_thrust=1.0, m=0.0411)
         self.sim_dt = 0.02
         self.action_dim = 4
         self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(
@@ -105,16 +105,16 @@ class CoVOController(controllers.MPPIZejiController):
         action = jnp.clip(action, -1.0, 1.0)
 
         action_thrust = action[:1]
-        last_action_thrust = self.last_action[:1]
-        action_thrust_max = last_action_thrust + 0.2
-        action_thrust_min = last_action_thrust - 0.2
-        action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
+        # last_action_thrust = self.last_action[:1]
+        # action_thrust_max = last_action_thrust + 0.2
+        # action_thrust_min = last_action_thrust - 0.2
+        # action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
 
         action_omega = action[1:]
-        last_action_omega = self.last_action[1:]
-        action_omega_max = last_action_omega + 0.2
-        action_omega_min = last_action_omega - 0.2
-        action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
+        # last_action_omega = self.last_action[1:]
+        # action_omega_max = last_action_omega + 0.2
+        # action_omega_min = last_action_omega - 0.2
+        # action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
 
         action = jnp.concatenate([action_thrust, action_omega], axis=0)
 
@@ -125,12 +125,7 @@ class CoVOController(controllers.MPPIZejiController):
 
 class MPPIController(controllers.MPPIController):
     def __init__(self, env, control_params, N: int, H: int, lam: float) -> None:
-        self.env_params = EnvParams3DJax(
-            alpha_bodyrate=0.2,
-            max_omega=jnp.array([4.0, 4.0, 2.0]),
-            max_thrust=0.8,
-            alpha_thrust=1.0,
-        )
+        self.env_params = env.default_params
         self.key = jax.random.PRNGKey(0)
         self.last_action = jnp.zeros(4)
         super().__init__(env, control_params, N, H, lam)
@@ -180,13 +175,14 @@ class MPPIController(controllers.MPPIController):
 
 
 def get_mppi_controller():
-    sigma = 0.5
+    # sigma = jnp.array([0.25, 0.1, 0.1, 0.3])
+    sigma = jnp.array([0.1, 0.1, 0.1, 0.3])
     N = 8192
     H = 32
     lam = 5e-2
 
     env = Quad3DLite()
-    m = 0.0451 # 0.027
+    m = 0.0411 # 0.027
     g = 9.81
     max_thrust = 0.8
 
@@ -195,7 +191,7 @@ def get_mppi_controller():
     a_mean_per_step = jnp.array([thrust_hover_normed, 0.0, 0.0, 0.0])
     a_mean = jnp.tile(a_mean_per_step, (H, 1))
 
-    a_cov_per_step = jnp.diag(jnp.array([sigma**2] * env.action_dim))
+    a_cov_per_step = jnp.diag(sigma**2)
     a_cov = jnp.tile(a_cov_per_step, (H, 1, 1))
     control_params = controllers.MPPIParams(
         gamma_mean=1.0,
@@ -207,18 +203,40 @@ def get_mppi_controller():
         obs_noise_scale=0.05, 
     )
 
-    # a_cov = jnp.diag(jnp.ones(H*env.action_dim)*sigma**2)
-    # control_params = controllers.MPPIZejiParams(
-    #     gamma_mean=1.0,
-    #     gamma_sigma=0.0,
-    #     discount=1.0,
-    #     sample_sigma=sigma,
-    #     a_mean=a_mean,
-    #     a_cov=a_cov,
-    #     a_cov_offline=jnp.zeros((1000, 128, 128)), 
-    # )
     controller = MPPIController(
         env=env, control_params=control_params, N=N, H=H, lam=lam
+    )
+    return controller, control_params
+
+def get_covo_controller():
+    sigma = 0.1
+    N = 8192
+    H = 32
+    lam = 5e-2
+
+    env = Quad3DLite()
+    m = 0.0411 # 0.027
+    g = 9.81
+    max_thrust = 0.8
+
+    thrust_hover = m * g
+    thrust_hover_normed = (thrust_hover / max_thrust) * 2.0 - 1.0
+    a_mean_per_step = jnp.array([thrust_hover_normed, 0.0, 0.0, 0.0])
+    a_mean = jnp.tile(a_mean_per_step, (H, 1))
+
+    a_cov_per_step = jnp.diag(jnp.array([sigma**2] * env.action_dim))
+    a_cov = jnp.diag(jnp.ones(H*env.action_dim)*sigma**2)
+    control_params = controllers.MPPIZejiParams(
+        gamma_mean=1.0,
+        gamma_sigma=0.0,
+        discount=1.0,
+        sample_sigma=sigma,
+        a_mean=a_mean,
+        a_cov=a_cov,
+        a_cov_offline=jnp.zeros((1000, 128, 128)), 
+    )
+    controller = CoVOController(
+        env=env, control_params=control_params, N=N, H=H, lam=lam, mode="offline"
     )
     return controller, control_params
 
@@ -236,14 +254,14 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # generate take off trajectory
     # target_pos = np.array([0.0, 0.0, 0.0])
     target_pos = np.array([0.0, 0.0, 0.0])
-    t_takeoff = 2.0
+    t_takeoff = 3.0
     N_takeoff = int(t_takeoff / dt)
     pos_takeoff = np.linspace(init_pos, target_pos, N_takeoff)
     vel_takeoff = np.ones_like(pos_takeoff) * (target_pos - init_pos) / t_takeoff
     acc_takeoff = np.zeros_like(pos_takeoff)
 
-    # stablize for 2.0 second
-    t_stablize = 2.0
+    # stablize for 4.0 second
+    t_stablize = 4.0
     N_stablize = int(t_stablize / dt)
     pos_stablize = np.ones((N_stablize, 3)) * target_pos
     vel_stablize = np.zeros_like(pos_stablize)
@@ -251,7 +269,7 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
 
     # generate main task trajectory
     scale = 0.5
-    T = 10.0
+    T = 3.0
     w0 = 2 * np.pi / T
     w1 = w0 * 2
 
@@ -261,26 +279,26 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_main = np.zeros((len(t), 3))
 
     # generate figure 8 trajectory
-    pos_main[:, 1] = 2 * scale * np.sin(w0 * t)
-    vel_main[:, 1] = 2 * scale * w0 * np.cos(w0 * t)
-    acc_main[:, 1] = -2 * scale * w0**2 * np.sin(w0 * t)
-    pos_main[:, 2] = scale * np.sin(w1 * t)
-    vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
-    acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
+    # pos_main[:, 1] = 2 * scale * np.sin(w0 * t)
+    # vel_main[:, 1] = 2 * scale * w0 * np.cos(w0 * t)
+    # acc_main[:, 1] = -2 * scale * w0**2 * np.sin(w0 * t)
+    # pos_main[:, 2] = scale * np.sin(w1 * t)
+    # vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
+    # acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
 
     # generate triangle trajectory
-    # pos_key0 = np.array([0.0, 0.0, 0.0])
-    # pos_key1 = np.array([0.0, 1.0, np.sqrt(3)])*scale
-    # pos_key2 = np.array([0.0, -1.0, np.sqrt(3)])*scale
-    # # connect key points
-    # pos_main[:len(t)//3, :] = np.linspace(pos_key0, pos_key1, len(t)//3)
-    # pos_main[len(t)//3:2*len(t)//3, :] = np.linspace(pos_key1, pos_key2, len(t)//3+1)
-    # pos_main[2*len(t)//3:, :] = np.linspace(pos_key2, pos_key0, len(t)//3+1)
-    # # calculate velocity and acceleration
-    # vel_main[:len(t)//3, :] = (pos_key1 - pos_key0) / (len(t)//3) / dt
-    # vel_main[len(t)//3:2*len(t)//3, :] = (pos_key2 - pos_key1) / (len(t)//3) / dt
-    # vel_main[2*len(t)//3:, :] = (pos_key0 - pos_key2) / (len(t)//3) / dt
-    # acc_main[:len(t)//3, :] = np.zeros(3)
+    pos_key0 = np.array([0.0, 0.0, 0.0])
+    pos_key1 = np.array([0.0, 1.0, np.sqrt(3)])*scale
+    pos_key2 = np.array([0.0, -1.0, np.sqrt(3)])*scale
+    # connect key points
+    pos_main[:len(t)//3, :] = np.linspace(pos_key0, pos_key1, len(t)//3)
+    pos_main[len(t)//3:2*len(t)//3, :] = np.linspace(pos_key1, pos_key2, len(t)//3)
+    pos_main[2*len(t)//3:, :] = np.linspace(pos_key2, pos_key0, len(t)//3)
+    # calculate velocity and acceleration
+    vel_main[:len(t)//3, :] = (pos_key1 - pos_key0) / (len(t)//3) / dt
+    vel_main[len(t)//3:2*len(t)//3, :] = (pos_key2 - pos_key1) / (len(t)//3) / dt
+    vel_main[2*len(t)//3:, :] = (pos_key0 - pos_key2) / (len(t)//3) / dt
+    acc_main[:len(t)//3, :] = np.zeros(3)
 
     # generate landing trajectory by inverse the takeoff trajectory
     pos_landing = pos_takeoff[::-1]
@@ -288,18 +306,18 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_landing = -acc_takeoff[::-1]
 
     # concatenate all trajectories
-    pos = np.concatenate(
-        [pos_still, pos_takeoff, pos_stablize, pos_main, pos_stablize, pos_landing], axis=0
-    )
-    vel = np.concatenate(
-        [vel_still, vel_takeoff, vel_stablize, vel_main, vel_stablize, vel_landing], axis=0
-    )
-    acc = np.concatenate(
-        [acc_still, acc_takeoff, acc_stablize, acc_main, acc_stablize, acc_landing], axis=0
-    )
-    # pos = np.concatenate([pos_still, pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
-    # vel = np.concatenate([vel_still, vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
-    # acc = np.concatenate([acc_still, acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
+    # pos = np.concatenate(
+    #     [pos_still, pos_takeoff, pos_stablize, *([pos_main]*3), pos_stablize, pos_landing], axis=0
+    # )
+    # vel = np.concatenate(
+    #     [vel_still, vel_takeoff, vel_stablize, *([vel_main]*3), vel_stablize, vel_landing], axis=0
+    # )
+    # acc = np.concatenate(
+    #     [acc_still, acc_takeoff, acc_stablize, *([acc_main]*3), acc_stablize, acc_landing], axis=0
+    # )
+    pos = np.concatenate([pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
+    vel = np.concatenate([vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
+    acc = np.concatenate([acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
     # pos = np.ones((250, 3)) * init_pos
     # vel = np.zeros_like(pos)
     # acc = np.zeros_like(pos)
@@ -436,7 +454,7 @@ class EnvParams3D:
     dt: float = 0.02
     g: float = 9.81  # gravity
 
-    m: float = 0.0451  # mass
+    m: float = 0.0411  # mass
     m_mean: float = 0.027  # mass
     m_std: float = 0.003  # mass
 
@@ -492,7 +510,7 @@ class EnvParams3D:
 class PIDParams:
     Kp: float = 8.0
     Kd: float = 4.0
-    Ki: float = 3.0
+    Ki: float = 0.0
     Kp_att: float = 6.0
 
     integral: np.ndarray = np.array([0.0, 0.0, 0.0])
@@ -844,13 +862,14 @@ def main(enable_logging=True):
         state_real = env.state_real
 
         # update controller parameters for CoVO controller only
-        # state_dict = state_real.__dict__
-        # state_dict_jax = {}
-        # for k, v in state_dict.items():
-        #     state_dict_jax[k] = jnp.array(v)
-        # state_dict_jax["control_params"] = env.mppi_control_params
-        # state_jax = EnvState3DJax(**state_dict_jax)
-        # env.mppi_control_params = env.mppi_controller.reset(state_jax, env.mppi_controller.env_params, env.mppi_control_params, jax.random.PRNGKey(0))
+        if isinstance(env.mppi_controller, CoVOController):
+            state_dict = state_real.__dict__
+            state_dict_jax = {}
+            for k, v in state_dict.items():
+                state_dict_jax[k] = jnp.array(v)
+            state_dict_jax["control_params"] = env.mppi_control_params
+            state_jax = EnvState3DJax(**state_dict_jax)
+            env.mppi_control_params = env.mppi_controller.reset(state_jax, env.mppi_controller.env_params, env.mppi_control_params, jax.random.PRNGKey(0))
 
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
@@ -867,16 +886,17 @@ def main(enable_logging=True):
             # add noise to PID to test system robustness
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
-            if timestep < 6 * 50:
-                k = 0.001
-            elif timestep < 16 * 50:
-                k = 1.0
-            else:
-                k = 0.001
+            # if timestep < 9 * 50:
+            #     k = 0.001
+            # elif timestep < (9+3*2) * 50:
+            #     k = 0.001 #1.0
+            # else:
+            #     k = 0.001
+            k = 1.0
             action_applied = action_mppi * k + action_pid * (1 - k)
-            if timestep < 10:
-                # not control at the beginning to warm up the controller
-                action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_applied * 1e-4
+            # if timestep < 10:
+            #     # not control at the beginning to warm up the controller
+            #     action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_applied * 1e-4
             obs_real, state_real, reward_real, done_real, info_real = env.step(
                 action_applied
             )

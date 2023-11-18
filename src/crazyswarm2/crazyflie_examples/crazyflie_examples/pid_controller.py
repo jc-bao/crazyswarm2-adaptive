@@ -12,7 +12,7 @@ import time
 import pickle
 
 mmddhhmmss = time.strftime("%m%d%H%M%S", time.localtime())
-log_path = f"/home/pcy/Research/code/crazyswarm2-adaptive/cflog/att_pid_{mmddhhmmss}.txt"
+log_path = f"/home/pcy/Research/code/crazyswarm2-adaptive/cflog/att_pid.txt"
 
 
 @dataclass

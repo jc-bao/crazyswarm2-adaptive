@@ -20,8 +20,8 @@ class Crazyflie:
         np.set_printoptions(precision=3, suppress=True)
         
         # parameters
-        self.world_center = np.array([0.0, 0.0, 2.0])
-        self.mass = 0.027
+        self.world_center = np.array([0.0, 0.0, 1.5])
+        self.mass = 0.040
         self.g = 9.81
         self.command_timelimit = 10.0
         self.traj_timelimit = 120.0
@@ -60,13 +60,13 @@ class Crazyflie:
         self.pos_pid_param = PIDParam(
             m=self.mass, 
             g=self.g, max_thrust=10.0, 
-            max_omega=np.array([1.0, 1.0, 1.0])*3.0, 
+            max_omega=np.array([1.0, 1.0, 1.0])*5.0, 
             Kp=np.array([1.0, 1.0, 1.0])*8.0, 
             Kd=np.array([1.0, 1.0, 1.5])*4.0, 
-            Ki=np.array([1.0, 1.0, 1.0])*3.0,
-            Kp_att=np.array([1.0, 1.0, 1.0])*0.10,
+            Ki=np.array([1.0, 1.0, 1.0])*0.0,
+            Kp_att=np.array([1.0, 1.0, 1.0])*6.0,
             # Kp_att=np.array([1.0, 1.0, 1.0])*0.040,
-            Ki_att=np.array([1.0, 1.0, 1.0])*0.004,
+            Ki_att=np.array([1.0, 1.0, 1.0])*0.000,
             dt = 1.0/self.rate)
         
         self.pos_pid = PIDController(self.pos_pid_param)
@@ -186,7 +186,7 @@ class Crazyflie:
 
     def set_attirate(self, omega_target:np.ndarray, thrust_target:float):
         # convert to degree
-        omega_target = omega_target / np.pi * 180.0
+        omega_target = omega_target
         acc_z_target = thrust_target / self.mass
 
         omega = omega_target
@@ -257,56 +257,53 @@ class Crazyflie:
         traj = Path()
         traj.header.frame_id = "map"
         
-        T = 8.0
-        base_w = 4 * np.pi / T
-        t = np.arange(0, int(2*T*self.rate)) / self.rate
-        t = np.tile(t, (3,1)).transpose()
-        traj_xyz = np.zeros((len(t), 3))
-        traj_vxyz = np.zeros((len(t), 3))
-        A = np.array([0.5, -0.5, 0.5])
-        w = np.array([base_w, base_w*1.5, base_w*2.0])
-        phase = np.array([0.0,0.0,0.0])
-        traj_xyz = A * np.sin(t*w+phase)
-        traj_vxyz = w * A * np.cos(t*w+phase)
+        # T = 1e-3
+        # base_w = 4 * np.pi / T
+        # t = np.arange(0, int(2*T*self.rate)) / self.rate
+        # t = np.tile(t, (3,1)).transpose()
+        # traj_xyz = np.zeros((len(t), 3))
+        # traj_vxyz = np.zeros((len(t), 3))
+        # A = np.array([0.25, -0.25, 0.25])
+        # w = np.array([base_w, base_w*1.5, base_w*2.0])
+        # phase = np.array([0.0,0.0,0.0])
+        # traj_xyz = A * np.sin(t*w+phase)
+        # traj_vxyz = w * A * np.cos(t*w+phase)
 
 
-        for j in range(traj_xyz.shape[0]):
-            pose = PoseStamped()
-            pose.header.frame_id = "map"
-            pose.pose.position = np2point(traj_xyz[j])
-            traj.poses.append(pose)
+        # for j in range(traj_xyz.shape[0]):
+        #     pose = PoseStamped()
+        #     pose.header.frame_id = "map"
+        #     pose.pose.position = np2point(traj_xyz[j])
+        #     traj.poses.append(pose)
 
-        current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
-        current_point = np.array([current_point.x, current_point.y, current_point.z])
-
-        # takeoff trajectory
-        target_point = current_point.copy()
-        target_point[2] += 0.5
-        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 5.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 5.0).poses
-
-        # landing trajectory
-        target_point = current_point.copy()
-        target_point[2] += 0.5
-        current_point = traj_xyz[-1].copy()
-        landing_traj_poses = line_traj(self.rate, current_point, target_point, 7.0).poses
-
-        current_point = target_point.copy() # when close to the land, the drone is not stable
-        target_point[2] -= 0.5
-
-        traj.poses = takeoff_traj_poses + traj.poses + landing_traj_poses + line_traj(self.rate, current_point, target_point, 1.0).poses
-
-        # # debug: only takeoff and landing
         # current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
         # current_point = np.array([current_point.x, current_point.y, current_point.z])
+
+        # # takeoff trajectory
         # target_point = current_point.copy()
-        # target_point[2] += 1.0
-        # target_point[0] += 0.5
-        # target_point1 = target_point.copy()
-        # target_point1[0] += 0.5
+        # target_point[2] += 0.5
+        # takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 5.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 5.0).poses
+
+        # # landing trajectory
+        # target_point = current_point.copy()
+        # target_point[2] += 0.5
+        # current_point = traj_xyz[-1].copy()
+        # landing_traj_poses = line_traj(self.rate, current_point, target_point, 7.0).poses
+
+        # current_point = target_point.copy() # when close to the land, the drone is not stable
+        # target_point[2] -= 0.5
+
+        # traj.poses = takeoff_traj_poses + traj.poses + landing_traj_poses + line_traj(self.rate, current_point, target_point, 1.0).poses
+
+        # # debug: only takeoff and landing
+        current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
+        current_point = np.array([current_point.x, current_point.y, current_point.z])
+        target_point = current_point.copy()
+        target_point[2] += 1.0
         
-        # print("current_point", current_point)
-        # print("target_point", target_point)
-        # traj.poses = line_traj(self.rate, current_point, target_point, 10.0).poses + line_traj(self.rate, target_point, current_point, 10.0).poses
+        print("current_point", current_point)
+        print("target_point", target_point)
+        traj.poses = line_traj(self.rate, current_point, target_point, 3.0).poses + line_traj(self.rate, target_point, target_point, 10.0).poses +  line_traj(self.rate, target_point, current_point, 3.0).poses
         
 
         return traj
@@ -330,6 +327,8 @@ def main():
         # while cfctl.step_cnt < 10:
             cfctl.get_drone_target()
             action = cfctl.pid_controller() * 1.0
+            if cfctl.step_cnt == 150:
+                cfctl.pos_pid.err_i *= 0.0
             cfctl.step(action)
 
 

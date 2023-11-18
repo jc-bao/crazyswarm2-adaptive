@@ -28,6 +28,26 @@ robot_types:
       ctrlMel:
         kR_xy: 1 #300
         kR_z: 0 #150
+      ctrlRwik:
+        # kp_xy: 0.4 #0.6 # p for position
+        # kd_xy: 0.2 # 0.35 # d for position
+        # ki_xy: 0.05
+        # i_range_xy: 2.0
+        # kR_xy: 70000 # p for attitude
+        kw_xy: 42000 # d for attitude
+        # kR_z: 60000 # 70000 # p for yaw
+        kw_z: 22000 # 30000  # d for yaw
+        ki_w_z: 12500 #0 #20000     # i for yaw
+        ki_w_x: 25000
+        ki_w_y: 25000
+        # i_range_m_z: 1500 # i range for yaw
+        kd_omega_rp: 400 # roll and pitch angular velocity d gain
+        # kp_z: 1.25
+        # kd_z: 0.4
+        # ki_z: 0.05
+        # i_range_z: 0.4
+        mass: 0.0411
+        massThrust: 92000 #85000
 
 # global settings for all robots
 all:
