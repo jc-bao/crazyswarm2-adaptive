@@ -35,7 +35,7 @@ class Quad3DLite:
     """
 
     def __init__(self) -> None:
-        self.default_params = EnvParams3DJax(alpha_bodyrate=0.5, alpha_thrust=1.0, m=0.0411)
+        self.default_params = EnvParams3DJax(alpha_bodyrate=0.5, alpha_thrust=1.0, m=0.0411, max_omega=jnp.array([5.0, 5.0, 2.0]))
         self.sim_dt = 0.02
         self.action_dim = 4
         self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(
@@ -175,10 +175,10 @@ class MPPIController(controllers.MPPIController):
 
 
 def get_mppi_controller():
-    # sigma = jnp.array([0.25, 0.1, 0.1, 0.3])
-    sigma = jnp.array([0.1, 0.1, 0.1, 0.3])
+    # sigma = jnp.array([0.1, 0.1, 0.1, 0.3])
+    sigma = jnp.array([0.05, 0.15, 0.15, 0.3])
     N = 8192
-    H = 32
+    H = 50
     lam = 5e-2
 
     env = Quad3DLite()
@@ -200,7 +200,7 @@ def get_mppi_controller():
         sample_sigma=sigma,
         a_mean=a_mean,
         a_cov=a_cov,
-        obs_noise_scale=0.05, 
+        obs_noise_scale=0.0, 
     )
 
     controller = MPPIController(
@@ -269,7 +269,7 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
 
     # generate main task trajectory
     scale = 0.5
-    T = 3.0
+    T = 4.5
     w0 = 2 * np.pi / T
     w1 = w0 * 2
 
@@ -286,7 +286,7 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
     # acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
 
-    # generate triangle trajectory
+    # # generate triangle trajectory
     pos_key0 = np.array([0.0, 0.0, 0.0])
     pos_key1 = np.array([0.0, 1.0, np.sqrt(3)])*scale
     pos_key2 = np.array([0.0, -1.0, np.sqrt(3)])*scale
@@ -306,18 +306,18 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_landing = -acc_takeoff[::-1]
 
     # concatenate all trajectories
-    # pos = np.concatenate(
-    #     [pos_still, pos_takeoff, pos_stablize, *([pos_main]*3), pos_stablize, pos_landing], axis=0
-    # )
-    # vel = np.concatenate(
-    #     [vel_still, vel_takeoff, vel_stablize, *([vel_main]*3), vel_stablize, vel_landing], axis=0
-    # )
-    # acc = np.concatenate(
-    #     [acc_still, acc_takeoff, acc_stablize, *([acc_main]*3), acc_stablize, acc_landing], axis=0
-    # )
-    pos = np.concatenate([pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
-    vel = np.concatenate([vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
-    acc = np.concatenate([acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
+    pos = np.concatenate(
+        [pos_takeoff, pos_stablize, *([pos_main]*2), pos_stablize, pos_landing], axis=0
+    )
+    vel = np.concatenate(
+        [vel_takeoff, vel_stablize, *([vel_main]*2), vel_stablize, vel_landing], axis=0
+    )
+    acc = np.concatenate(
+        [acc_takeoff, acc_stablize, *([acc_main]*2), acc_stablize, acc_landing], axis=0
+    )
+    # pos = np.concatenate([pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
+    # vel = np.concatenate([vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
+    # acc = np.concatenate([acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
     # pos = np.ones((250, 3)) * init_pos
     # vel = np.zeros_like(pos)
     # acc = np.zeros_like(pos)
@@ -449,7 +449,7 @@ class EnvState3D:
 class EnvParams3D:
     max_speed: float = 8.0
     max_torque: np.ndarray = np.array([9e-3, 9e-3, 2e-3])
-    max_omega: np.ndarray = np.array([4.0, 4.0, 2.0])
+    max_omega: np.ndarray = np.array([5.0, 5.0, 2.0])
     max_thrust: float = 0.8
     dt: float = 0.02
     g: float = 9.81  # gravity
@@ -886,13 +886,12 @@ def main(enable_logging=True):
             # add noise to PID to test system robustness
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
-            # if timestep < 9 * 50:
-            #     k = 0.001
-            # elif timestep < (9+3*2) * 50:
-            #     k = 0.001 #1.0
-            # else:
-            #     k = 0.001
-            k = 1.0
+            if timestep < 7 * 50:
+                k = 0.001
+            elif timestep < (7+9) * 50:
+                k = 1.0
+            else:
+                k = 0.001
             action_applied = action_mppi * k + action_pid * (1 - k)
             # if timestep < 10:
             #     # not control at the beginning to warm up the controller
@@ -908,6 +907,7 @@ def main(enable_logging=True):
                 "action_pid": action_pid,
                 "action_mppi": action_mppi,
                 "pos_tar": state_real.pos_tar,
+                "vel_tar": state_real.vel_tar,
                 "action_applied": action_applied,
             }
             env.log.append(log_info)
