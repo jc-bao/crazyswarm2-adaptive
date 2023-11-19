@@ -29,13 +29,20 @@ from quadjax.envs.quad3d_free import (
 from quadjax.dynamics import utils
 from quadjax import dynamics as quad_dyn
 
+
 class Quad3DLite:
     """
     simplified version of quad3d
     """
 
     def __init__(self) -> None:
-        self.default_params = EnvParams3DJax(alpha_bodyrate=0.5, alpha_thrust=1.0, m=0.0411, max_omega=jnp.array([5.0, 5.0, 2.0]))
+        self.default_params = EnvParams3DJax(
+            alpha_bodyrate=0.5,
+            alpha_thrust=1.0,
+            m=0.0411,
+            max_omega=jnp.array([5.0, 5.0, 2.0]),
+            max_steps_in_episode=32.5 * 50,
+        )
         self.sim_dt = 0.02
         self.action_dim = 4
         self.step_fn, self.dynamics_fn = quad_dyn.get_free_dynamics_3d_bodyrate(
@@ -182,7 +189,7 @@ def get_mppi_controller():
     lam = 5e-2
 
     env = Quad3DLite()
-    m = 0.0411 # 0.027
+    m = 0.0411  # 0.027
     g = 9.81
     max_thrust = 0.8
 
@@ -200,7 +207,7 @@ def get_mppi_controller():
         sample_sigma=sigma,
         a_mean=a_mean,
         a_cov=a_cov,
-        obs_noise_scale=0.0, 
+        obs_noise_scale=0.0,
     )
 
     controller = MPPIController(
@@ -208,14 +215,15 @@ def get_mppi_controller():
     )
     return controller, control_params
 
+
 def get_covo_controller():
-    sigma = 0.1
+    sigma = 0.135  # keep the sampling range the same as MPPI
     N = 8192
-    H = 32
+    H = 50
     lam = 5e-2
 
     env = Quad3DLite()
-    m = 0.0411 # 0.027
+    m = 0.0411  # 0.027
     g = 9.81
     max_thrust = 0.8
 
@@ -224,8 +232,7 @@ def get_covo_controller():
     a_mean_per_step = jnp.array([thrust_hover_normed, 0.0, 0.0, 0.0])
     a_mean = jnp.tile(a_mean_per_step, (H, 1))
 
-    a_cov_per_step = jnp.diag(jnp.array([sigma**2] * env.action_dim))
-    a_cov = jnp.diag(jnp.ones(H*env.action_dim)*sigma**2)
+    a_cov = jnp.diag(jnp.ones(H * env.action_dim) * sigma**2)
     control_params = controllers.MPPIZejiParams(
         gamma_mean=1.0,
         gamma_sigma=0.0,
@@ -233,7 +240,8 @@ def get_covo_controller():
         sample_sigma=sigma,
         a_mean=a_mean,
         a_cov=a_cov,
-        a_cov_offline=jnp.zeros((1000, 128, 128)), 
+        a_cov_offline=jnp.zeros((1000, 200, 200)),
+        obs_noise_scale=0.0,
     )
     controller = CoVOController(
         env=env, control_params=control_params, N=N, H=H, lam=lam, mode="offline"
@@ -241,13 +249,13 @@ def get_covo_controller():
     return controller, control_params
 
 
-def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
+def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
     """
-    generate a smooth trajectory with max_steps steps
+    generate a trajectory with max_steps steps
     """
     # generate still trajectory
     pos_still = np.ones((100, 3)) * init_pos
-    pos_still[..., 2] -= 0.1 # NOTE: make sure the drone stay on the ground
+    pos_still[..., 2] -= 0.1  # NOTE: make sure the drone stay on the ground
     vel_still = np.zeros_like(pos_still)
     acc_still = np.zeros_like(pos_still)
 
@@ -260,24 +268,18 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     vel_takeoff = np.ones_like(pos_takeoff) * (target_pos - init_pos) / t_takeoff
     acc_takeoff = np.zeros_like(pos_takeoff)
 
-    # stablize for 4.0 second
-    t_stablize = 4.0
+    # stablize for 2.0 second
+    t_stablize = 2.0
     N_stablize = int(t_stablize / dt)
     pos_stablize = np.ones((N_stablize, 3)) * target_pos
     vel_stablize = np.zeros_like(pos_stablize)
     acc_stablize = np.zeros_like(pos_stablize)
 
     # generate main task trajectory
-    scale = 0.5
-    T = 4.5
-    w0 = 2 * np.pi / T
-    w1 = w0 * 2
-
-    t = np.arange(0, T, dt)
-    pos_main = np.zeros((len(t), 3))
-    vel_main = np.zeros((len(t), 3))
-    acc_main = np.zeros((len(t), 3))
-
+    # scale = 0.5
+    # T = 4.5
+    # w0 = 2 * np.pi / T
+    # w1 = w0 * 2
     # generate figure 8 trajectory
     # pos_main[:, 1] = 2 * scale * np.sin(w0 * t)
     # vel_main[:, 1] = 2 * scale * w0 * np.cos(w0 * t)
@@ -286,19 +288,71 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
     # acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
 
-    # # generate triangle trajectory
-    pos_key0 = np.array([0.0, 0.0, 0.0])
-    pos_key1 = np.array([0.0, 1.0, np.sqrt(3)])*scale
-    pos_key2 = np.array([0.0, -1.0, np.sqrt(3)])*scale
-    # connect key points
-    pos_main[:len(t)//3, :] = np.linspace(pos_key0, pos_key1, len(t)//3)
-    pos_main[len(t)//3:2*len(t)//3, :] = np.linspace(pos_key1, pos_key2, len(t)//3)
-    pos_main[2*len(t)//3:, :] = np.linspace(pos_key2, pos_key0, len(t)//3)
-    # calculate velocity and acceleration
-    vel_main[:len(t)//3, :] = (pos_key1 - pos_key0) / (len(t)//3) / dt
-    vel_main[len(t)//3:2*len(t)//3, :] = (pos_key2 - pos_key1) / (len(t)//3) / dt
-    vel_main[2*len(t)//3:, :] = (pos_key0 - pos_key2) / (len(t)//3) / dt
-    acc_main[:len(t)//3, :] = np.zeros(3)
+    # # # generate triangle trajectory
+    time_main = 4.5*5
+    t = np.arange(0, time_main, dt)
+    pos_main = np.zeros((len(t), 3))
+    vel_main = np.zeros((len(t), 3))
+    acc_main = np.zeros((len(t), 3))
+    step_main = int(time_main / dt)
+    time_per_edge = 1.5
+    step_per_edge = int(time_per_edge / dt)
+    # triangle
+    pos_keys = (
+        np.array([[0.0, 0.0, 0.0], [0.0, 1.0, np.sqrt(3)], [0.0, -1.0, np.sqrt(3)]])
+        * 0.5
+    )
+    # rectangle
+    # pos_keys = (
+    #     np.array(
+    #         [
+    #             [0.0, 0.0, 0.0],
+    #             [0.0, np.sqrt(2), np.sqrt(2)],
+    #             [0.0, 0.0, 2 * np.sqrt(2)],
+    #             [0.0, -np.sqrt(2), np.sqrt(2)],
+    #         ]
+    #     )
+    #     * 0.5
+    # )
+    # star
+    # angle = np.pi / 180 * 36
+    # edge_size = 0.5 / np.cos(angle)*0.75
+    # pos_keys = (
+    #     np.array(
+    #         [
+    #             [0.0, 0.0, 0.0],
+    #             [0.0, np.cos(angle * 2), np.sin(angle * 2)],
+    #             [0.0, np.cos(angle * 4)*edge_size, np.sin(angle * 4)*edge_size],
+    #             [0.0, np.cos(angle * 1)*edge_size, np.sin(angle * 1)*edge_size],
+    #             [0.0, np.cos(angle * 3), np.sin(angle * 3)],
+    #         ]
+    #     )
+    # )
+    # pos_key1 = np.array([0.0, 1.0, np.sqrt(3)])*scale
+    # pos_key2 = np.array([0.0, -1.0, np.sqrt(3)])*scale
+    for i in range(step_main):
+        edge_idx = i // step_per_edge
+        edge_start_point_idx = edge_idx % pos_keys.shape[0]
+        edge_end_point_idx = (edge_idx + 1) % pos_keys.shape[0]
+        edge_start_point = pos_keys[edge_start_point_idx]
+        edge_end_point = pos_keys[edge_end_point_idx]
+        idx_in_edge = i % step_per_edge
+        pos_main[i] = (
+            edge_start_point
+            + (edge_end_point - edge_start_point) * idx_in_edge / step_per_edge
+        )
+        vel_main[i] = (edge_end_point - edge_start_point) / time_per_edge
+        acc_main[i] = np.zeros(3)
+
+    # # connect key points
+    # pos_main[:len(t)//3, :] = np.linspace(pos_key0, pos_key1, len(t)//3)
+    # pos_main[len(t)//3:2*len(t)//3, :] = np.linspace(pos_key1, pos_key2, len(t)//3)
+    # pos_main[2*len(t)//3:, :] = np.linspace(pos_key2, pos_key0, len(t)//3)
+    # # calculate velocity and acceleration
+    # vel_main[:len(t)//3, :] = (pos_key1 - pos_key0) / (len(t)//3) / dt
+    # vel_main[len(t)//3:2*len(t)//3, :] = (pos_key2 - pos_key1) / (len(t)//3) / dt
+    # vel_main[2*len(t)//3:, :] = (pos_key0 - pos_key2) / (len(t)//3) / dt
+    # acc_main[:len(t)//3, :] = np.zeros(3)
 
     # generate landing trajectory by inverse the takeoff trajectory
     pos_landing = pos_takeoff[::-1]
@@ -306,14 +360,36 @@ def generate_smooth_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_landing = -acc_takeoff[::-1]
 
     # concatenate all trajectories
+    repeat_times = 1
     pos = np.concatenate(
-        [pos_takeoff, pos_stablize, *([pos_main]*2), pos_stablize, pos_landing], axis=0
+        [
+            pos_takeoff,
+            pos_stablize,
+            *([pos_main] * repeat_times),
+            pos_stablize,
+            pos_landing,
+        ],
+        axis=0,
     )
     vel = np.concatenate(
-        [vel_takeoff, vel_stablize, *([vel_main]*2), vel_stablize, vel_landing], axis=0
+        [
+            vel_takeoff,
+            vel_stablize,
+            *([vel_main] * repeat_times),
+            vel_stablize,
+            vel_landing,
+        ],
+        axis=0,
     )
     acc = np.concatenate(
-        [acc_takeoff, acc_stablize, *([acc_main]*2), acc_stablize, acc_landing], axis=0
+        [
+            acc_takeoff,
+            acc_stablize,
+            *([acc_main] * repeat_times),
+            acc_stablize,
+            acc_landing,
+        ],
+        axis=0,
     )
     # pos = np.concatenate([pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
     # vel = np.concatenate([vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
@@ -583,6 +659,7 @@ class Crazyflie:
         controller_name="pid",
         controller_params=None,
         enable_logging=True,
+        enable_covo=False,
     ) -> None:
         # control parameters
         self.timestep = 0
@@ -598,7 +675,10 @@ class Crazyflie:
         self.env_params = EnvParams3D()
 
         # base controller: PID
-        self.mppi_controller, self.mppi_control_params = get_mppi_controller()
+        if enable_covo:
+            self.mppi_controller, self.mppi_control_params = get_covo_controller()
+        else:
+            self.mppi_controller, self.mppi_control_params = get_mppi_controller()
         self.control_params = PIDParams()
         self.controller = PIDController(self.env_params, self.control_params)
 
@@ -641,8 +721,9 @@ class Crazyflie:
         # logging
         self.enable_logging = enable_logging
         if enable_logging:
-            mmddhhmmss = time.strftime("%m%d%H%M%S", time.localtime())
-            self.log_path = f"/home/pcy/Research/code/crazyswarm2-adaptive/cflog/cfctl_{mmddhhmmss}.txt"
+            self.log_path = (
+                "/home/pcy/Research/code/crazyswarm2-adaptive/cflog/cfctl.txt"
+            )
             self.log = []
 
         # establish connection
@@ -658,7 +739,7 @@ class Crazyflie:
         pos, quat = self.get_drone_state()
         self.pos_hist[-1] = pos
         self.quat_hist[-1] = quat
-        self.pos_traj, self.vel_traj, self.acc_traj = generate_smooth_traj(pos, self.dt)
+        self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(pos, self.dt)
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
@@ -780,13 +861,13 @@ class Crazyflie:
         last_discrete_time = int(self.last_control_time / self.dt)
         discrete_time = int(self.timeHelper.time() / self.dt)
         if discrete_time > (last_discrete_time + 1):
-            next_time = (discrete_time+1) * self.dt
+            next_time = (discrete_time + 1) * self.dt
         else:
             next_time = (last_discrete_time + 1) * self.dt
         delta_time = next_time - self.last_control_time
         # if delta_time > (self.dt + 1e-3):
         #     print(f"WARNING: time difference is too large: {delta_time:.2f} s")
-        print(f'frequncy: {(1.0 / delta_time):.2f} Hz')
+        print(f"frequncy: {(1.0 / delta_time):.2f} Hz")
         self.last_control_time = next_time
         while self.timeHelper.time() <= next_time:
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
@@ -848,14 +929,9 @@ class Crazyflie:
             self.get_pose_msg(self.state_real.pos_tar, np.array([0.0, 0.0, 0.0, 1, 0]))
         )
 
-    def emergency(self, obs):
-        self.cf.emergency()
-        self.reset()
-        raise ValueError
-
 
 def main(enable_logging=True):
-    env = Crazyflie(enable_logging=enable_logging)
+    env = Crazyflie(enable_logging=enable_logging, enable_covo=False)
 
     try:
         # env.cf.setParam("usd.logging", 1)
@@ -863,13 +939,27 @@ def main(enable_logging=True):
 
         # update controller parameters for CoVO controller only
         if isinstance(env.mppi_controller, CoVOController):
+            print("update controller parameters for covo ... ")
             state_dict = state_real.__dict__
             state_dict_jax = {}
             for k, v in state_dict.items():
                 state_dict_jax[k] = jnp.array(v)
             state_dict_jax["control_params"] = env.mppi_control_params
             state_jax = EnvState3DJax(**state_dict_jax)
-            env.mppi_control_params = env.mppi_controller.reset(state_jax, env.mppi_controller.env_params, env.mppi_control_params, jax.random.PRNGKey(0))
+            env.mppi_control_params = env.mppi_controller.reset(
+                state_jax,
+                env.mppi_controller.env_params,
+                env.mppi_control_params,
+                jax.random.PRNGKey(0),
+            )
+            # save mppi_control_params
+            with open(
+                "/home/pcy/Research/code/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/results/covo_cov.pkl",
+                "wb",
+            ) as f:
+                pickle.dump(env.mppi_control_params.a_cov_offline, f)
+            print("finish updating controller parameters for covo ... ")
+        # exit()
 
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
@@ -886,12 +976,13 @@ def main(enable_logging=True):
             # add noise to PID to test system robustness
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
-            if timestep < 7 * 50:
+            if timestep < 5 * 50:
                 k = 0.001
-            elif timestep < (7+9) * 50:
+            elif timestep < (5 + 22.5) * 50:
                 k = 1.0
             else:
                 k = 0.001
+            # k = 0.0
             action_applied = action_mppi * k + action_pid * (1 - k)
             # if timestep < 10:
             #     # not control at the beginning to warm up the controller

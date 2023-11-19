@@ -47,7 +47,7 @@ robot_types:
         # ki_z: 0.05
         # i_range_z: 0.4
         mass: 0.0411
-        massThrust: 92000 #85000
+        massThrust: 89000 #92000 #85000
 
 # global settings for all robots
 all:
