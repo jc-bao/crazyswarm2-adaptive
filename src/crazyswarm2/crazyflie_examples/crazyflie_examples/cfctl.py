@@ -355,6 +355,17 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # vel_main[2*len(t)//3:, :] = (pos_key0 - pos_key2) / (len(t)//3) / dt
     # acc_main[:len(t)//3, :] = np.zeros(3)
 
+    # if path is not None:
+    import pandas as pd
+    df = pd.read_csv('/home/pcy/Research/code/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/data/lecar2.csv')
+    pos_main = np.array(df[['y', 'x', 'z']].values)
+    pos_main *= 0.5
+    pos_main[:, 1] = -pos_main[:, 1]
+    pos_main[:, 1] *= 1.5
+    pos_main -= pos_main[0]
+    vel_main = np.zeros_like(pos_main)
+    acc_main = np.zeros_like(pos_main)
+
     # generate landing trajectory by inverse the takeoff trajectory
     pos_landing = pos_takeoff[::-1]
     vel_landing = -vel_takeoff[::-1]
@@ -668,7 +679,7 @@ class Crazyflie:
         self.adapt_horizon = 10
 
         # real-world parameters
-        self.world_center = np.array([0.0, 0.0, 1.0])
+        self.world_center = np.array([0.0, 1.0, 1.0])
         self.xyz_min = np.array([-3.0, -3.0, -3.0])
         self.xyz_max = np.array([3.0, 3.0, 2.0])
 
@@ -1036,7 +1047,7 @@ def main(enable_logging=True, mode="covo-online"):  # mode  = mppi covo-online c
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
             if timestep <  (5)*50:
                 k = 0.001
-            elif timestep < (5 + 22.5) * 50:
+            elif timestep < (5 + 30.0) * 50: # used to be 22.5
                 k = 1.0
             else:
                 k = 0.001
