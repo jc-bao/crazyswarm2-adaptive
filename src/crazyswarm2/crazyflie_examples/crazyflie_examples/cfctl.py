@@ -40,7 +40,7 @@ class Quad3DLite:
             alpha_bodyrate=0.5,
             alpha_thrust=1.0,
             m=0.0411,
-            max_omega=jnp.array([5.0, 5.0, 2.0]),
+            max_omega=jnp.array([10.0, 10.0, 2.0]),
             max_steps_in_episode=32.5 * 50,
         )
         self.sim_dt = 0.02
@@ -217,10 +217,10 @@ def get_mppi_controller():
 
 
 def get_covo_controller(mode="offline"):
-    sigma = 0.135  # keep the sampling range the same as MPPI
+    sigma = (np.array([0.4, 1.0, 1.0, 1.0]).prod())**(1/4)  # keep the sampling range the same as MPPI
     N = 8192
-    H = 32
-    lam = 5e-2
+    H = 24 #32
+    lam = 3.0e-2
 
     env = Quad3DLite()
     m = 0.0411  # 0.027
@@ -288,14 +288,13 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
     # acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
 
-    # # # generate triangle trajectory
+    # generate triangle trajectory
     time_main = 4.5 * 5
     t = np.arange(0, time_main, dt)
     pos_main = np.zeros((len(t), 3))
     vel_main = np.zeros((len(t), 3))
     acc_main = np.zeros((len(t), 3))
     step_main = int(time_main / dt)
-    # time_per_edge = 1.5
     time_per_edge = 1.5
 
     step_per_edge = int(time_per_edge / dt)
@@ -304,7 +303,7 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
         np.array([[0.0, 0.0, 0.0], [0.0, 1.0, np.sqrt(3)], [0.0, -1.0, np.sqrt(3)]])
         * 0.5
     )
-    # rectangle
+    # # rectangle
     # pos_keys = (
     #     np.array(
     #         [
@@ -527,7 +526,7 @@ class EnvState3D:
 class EnvParams3D:
     max_speed: float = 8.0
     max_torque: np.ndarray = np.array([9e-3, 9e-3, 2e-3])
-    max_omega: np.ndarray = np.array([5.0, 5.0, 2.0])
+    max_omega: np.ndarray = np.array([10.0, 10.0, 2.0])
     max_thrust: float = 0.8
     dt: float = 0.02
     g: float = 9.81  # gravity
@@ -962,7 +961,7 @@ class Crazyflie:
         )
 
 
-def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-offline
+def main(enable_logging=True, mode="covo-online"):  # mode  = mppi covo-online covo-offline
     env = Crazyflie(enable_logging=enable_logging, mode=mode)
 
     try:
@@ -994,24 +993,25 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
         # exit()
 
         # empty running controller
-        # print("empty running controller ... ")
-        # for _ in range(10):
-        #     (
-        #         action_mppi,
-        #         env.mppi_control_params,
-        #         mppi_control_info,
-        #     ) = env.mppi_controller(
-        #         None, state_real, env.env_params, None, env.mppi_control_params, None
-        #     )
-        #     t0 = time.time()
-        #     action_pid, env.control_params, control_info = env.controller(
-        #         None, state_real, env.env_params, None, env.control_params, None
-        #     )
-        #     action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_pid * 1e-8 + action_mppi * 1e-8
-        #     obs_real, state_real, reward_real, done_real, info_real = env.step(
-        #         action_applied
-        #     )
-        # print("finish empty running controller ... ")
+        print("empty running controller ... ")
+        for _ in range(10):
+            (
+                action_mppi,
+                env.mppi_control_params,
+                mppi_control_info,
+            ) = env.mppi_controller(
+                None, state_real, env.env_params, None, env.mppi_control_params, None
+            )
+            t0 = time.time()
+            action_pid, env.control_params, control_info = env.controller(
+                None, state_real, env.env_params, None, env.control_params, None
+            )
+            action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_pid * 1e-8 + action_mppi * 1e-8
+            obs_real, state_real, reward_real, done_real, info_real = env.step(
+                action_applied
+            )
+        env.timestep = 0
+        print("finish empty running controller ... ")
 
 
         total_steps = env.pos_traj.shape[0] - 1
@@ -1034,7 +1034,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             # add noise to PID to test system robustness
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
-            if timestep <  5*50:
+            if timestep <  (5)*50:
                 k = 0.001
             elif timestep < (5 + 22.5) * 50:
                 k = 1.0
@@ -1064,8 +1064,8 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
     finally:
         # env.cf.setParam("usd.logging", 0)
         data = env.log
-        start_step = 5 * 50
-        end_step = (5 + 18) * 50
+        start_step = 6 * 50
+        end_step = (6 + 18) * 50
         pos = np.array([d["pos"] for d in data])[start_step:end_step, 1:]
         pos_tar = np.array([d["pos_tar"] for d in data])[start_step:end_step, 1:]
         pos_errs = np.linalg.norm(pos - pos_tar, axis=1)
