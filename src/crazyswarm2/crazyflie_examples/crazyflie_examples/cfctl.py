@@ -163,16 +163,16 @@ class MPPIController(controllers.MPPIController):
         action = jnp.clip(action, -1.0, 1.0)
 
         action_thrust = action[:1]
-        last_action_thrust = self.last_action[:1]
-        action_thrust_max = last_action_thrust + 0.2
-        action_thrust_min = last_action_thrust - 0.2
-        action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
+        # last_action_thrust = self.last_action[:1]
+        # action_thrust_max = last_action_thrust + 0.2
+        # action_thrust_min = last_action_thrust - 0.2
+        # action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
 
         action_omega = action[1:]
-        last_action_omega = self.last_action[1:]
-        action_omega_max = last_action_omega + 0.2
-        action_omega_min = last_action_omega - 0.2
-        action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
+        # last_action_omega = self.last_action[1:]
+        # action_omega_max = last_action_omega + 0.2
+        # action_omega_min = last_action_omega - 0.2
+        # action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
 
         action = jnp.concatenate([action_thrust, action_omega], axis=0)
 
@@ -183,9 +183,9 @@ class MPPIController(controllers.MPPIController):
 
 def get_mppi_controller():
     # sigma = jnp.array([0.1, 0.1, 0.1, 0.3])
-    sigma = jnp.array([0.05, 0.15, 0.15, 0.3])
+    sigma = jnp.array([0.4, 1.0, 1.0, 1.0])
     N = 8192
-    H = 50
+    H = 32
     lam = 5e-2
 
     env = Quad3DLite()
@@ -216,10 +216,10 @@ def get_mppi_controller():
     return controller, control_params
 
 
-def get_covo_controller():
+def get_covo_controller(mode="offline"):
     sigma = 0.135  # keep the sampling range the same as MPPI
     N = 8192
-    H = 50
+    H = 32
     lam = 5e-2
 
     env = Quad3DLite()
@@ -244,7 +244,7 @@ def get_covo_controller():
         obs_noise_scale=0.0,
     )
     controller = CoVOController(
-        env=env, control_params=control_params, N=N, H=H, lam=lam, mode="offline"
+        env=env, control_params=control_params, N=N, H=H, lam=lam, mode=mode
     )
     return controller, control_params
 
@@ -289,13 +289,15 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
     # acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
 
     # # # generate triangle trajectory
-    time_main = 4.5*5
+    time_main = 4.5 * 5
     t = np.arange(0, time_main, dt)
     pos_main = np.zeros((len(t), 3))
     vel_main = np.zeros((len(t), 3))
     acc_main = np.zeros((len(t), 3))
     step_main = int(time_main / dt)
+    # time_per_edge = 1.5
     time_per_edge = 1.5
+
     step_per_edge = int(time_per_edge / dt)
     # triangle
     pos_keys = (
@@ -659,7 +661,7 @@ class Crazyflie:
         controller_name="pid",
         controller_params=None,
         enable_logging=True,
-        enable_covo=False,
+        mode="mppi",
     ) -> None:
         # control parameters
         self.timestep = 0
@@ -667,7 +669,7 @@ class Crazyflie:
         self.adapt_horizon = 10
 
         # real-world parameters
-        self.world_center = np.array([0.0, 0.0, 1.5])
+        self.world_center = np.array([0.0, 0.0, 1.0])
         self.xyz_min = np.array([-3.0, -3.0, -3.0])
         self.xyz_max = np.array([3.0, 3.0, 2.0])
 
@@ -675,10 +677,20 @@ class Crazyflie:
         self.env_params = EnvParams3D()
 
         # base controller: PID
-        if enable_covo:
-            self.mppi_controller, self.mppi_control_params = get_covo_controller()
-        else:
+        if "covo" in mode:
+            if "online" in mode:
+                covo_mode = "online"
+            elif "offline" in mode:
+                covo_mode = "offline"
+            else:
+                raise NotImplementedError
+            self.mppi_controller, self.mppi_control_params = get_covo_controller(
+                mode=covo_mode
+            )
+        elif mode == "mppi":
             self.mppi_controller, self.mppi_control_params = get_mppi_controller()
+        else:
+            raise NotImplementedError
         self.control_params = PIDParams()
         self.controller = PIDController(self.env_params, self.control_params)
 
@@ -848,6 +860,9 @@ class Crazyflie:
         self.cf.cmdFullState(
             np.zeros(3), np.zeros(3), np.array([0, 0, acc_z_target]), 0.0, omega_target
         )
+        # self.cf.cmdFullState(
+        #     np.zeros(3), np.zeros(3), np.array([0, 0, -1.0]), 0.0, np.zeros(3)
+        # )
 
     # @do_profile()
     def step(self, action: np.ndarray):
@@ -871,6 +886,23 @@ class Crazyflie:
         self.last_control_time = next_time
         while self.timeHelper.time() <= next_time:
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
+
+        # next_time = self.last_control_time + self.dt
+        # current_time = self.timeHelper.time()
+        # print(f"Frequency: {(1.0 / (current_time - self.last_control_time)):.2f} Hz")
+        # # print(f"last_control_time: {self.last_control_time%1000000:.4f}, current_time: {current_time%1000000:.4f}, next_time: {next_time%1000000:.4f}")
+
+        # if current_time > next_time:
+        #     print(f"WARNING: time difference is too large {current_time - self.last_control_time:.4f} s")
+        #     self.last_control_time = current_time
+        # else:
+        #     self.last_control_time = next_time
+        # rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
+        # #warn time out
+
+        # while self.timeHelper.time() < next_time:
+        #     rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
+        
 
         # update real-world state
         self.timestep += 1
@@ -930,8 +962,8 @@ class Crazyflie:
         )
 
 
-def main(enable_logging=True):
-    env = Crazyflie(enable_logging=enable_logging, enable_covo=False)
+def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-offline
+    env = Crazyflie(enable_logging=enable_logging, mode=mode)
 
     try:
         # env.cf.setParam("usd.logging", 1)
@@ -961,8 +993,30 @@ def main(enable_logging=True):
             print("finish updating controller parameters for covo ... ")
         # exit()
 
+        # empty running controller
+        # print("empty running controller ... ")
+        # for _ in range(10):
+        #     (
+        #         action_mppi,
+        #         env.mppi_control_params,
+        #         mppi_control_info,
+        #     ) = env.mppi_controller(
+        #         None, state_real, env.env_params, None, env.mppi_control_params, None
+        #     )
+        #     t0 = time.time()
+        #     action_pid, env.control_params, control_info = env.controller(
+        #         None, state_real, env.env_params, None, env.control_params, None
+        #     )
+        #     action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_pid * 1e-8 + action_mppi * 1e-8
+        #     obs_real, state_real, reward_real, done_real, info_real = env.step(
+        #         action_applied
+        #     )
+        # print("finish empty running controller ... ")
+
+
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
+            t0 = time.time()
             (
                 action_mppi,
                 env.mppi_control_params,
@@ -970,13 +1024,17 @@ def main(enable_logging=True):
             ) = env.mppi_controller(
                 None, state_real, env.env_params, None, env.mppi_control_params, None
             )
+            t_mppi = time.time() - t0
+            t0 = time.time()
             action_pid, env.control_params, control_info = env.controller(
                 None, state_real, env.env_params, None, env.control_params, None
             )
+            t_pid = time.time() - t0
+            # print(f"mppi time: {(t_mppi)*1000:.2f} ms, pid time: {(t_pid)*1000:.2f} ms")
             # add noise to PID to test system robustness
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
-            if timestep < 5 * 50:
+            if timestep <  5*50:
                 k = 0.001
             elif timestep < (5 + 22.5) * 50:
                 k = 1.0
@@ -984,9 +1042,6 @@ def main(enable_logging=True):
                 k = 0.001
             # k = 0.0
             action_applied = action_mppi * k + action_pid * (1 - k)
-            # if timestep < 10:
-            #     # not control at the beginning to warm up the controller
-            #     action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_applied * 1e-4
             obs_real, state_real, reward_real, done_real, info_real = env.step(
                 action_applied
             )
@@ -1008,6 +1063,14 @@ def main(enable_logging=True):
         pass
     finally:
         # env.cf.setParam("usd.logging", 0)
+        data = env.log
+        start_step = 5 * 50
+        end_step = (5 + 18) * 50
+        pos = np.array([d["pos"] for d in data])[start_step:end_step, 1:]
+        pos_tar = np.array([d["pos_tar"] for d in data])[start_step:end_step, 1:]
+        pos_errs = np.linalg.norm(pos - pos_tar, axis=1)
+        mean, std = np.mean(pos_errs), np.std(pos_errs)
+        print(f"mean: {mean:.3f}, std: {std:.3f}")
         with open(env.log_path, "wb") as f:
             pickle.dump(env.log, f)
         print("log saved to", env.log_path)

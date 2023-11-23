@@ -257,53 +257,53 @@ class Crazyflie:
         traj = Path()
         traj.header.frame_id = "map"
         
-        # T = 1e-3
-        # base_w = 4 * np.pi / T
-        # t = np.arange(0, int(2*T*self.rate)) / self.rate
-        # t = np.tile(t, (3,1)).transpose()
-        # traj_xyz = np.zeros((len(t), 3))
-        # traj_vxyz = np.zeros((len(t), 3))
-        # A = np.array([0.25, -0.25, 0.25])
-        # w = np.array([base_w, base_w*1.5, base_w*2.0])
-        # phase = np.array([0.0,0.0,0.0])
-        # traj_xyz = A * np.sin(t*w+phase)
-        # traj_vxyz = w * A * np.cos(t*w+phase)
+        T = 12.0
+        base_w = 3 * np.pi / T
+        t = np.arange(0, int(2*T*self.rate)) / self.rate
+        t = np.tile(t, (3,1)).transpose()
+        traj_xyz = np.zeros((len(t), 3))
+        traj_vxyz = np.zeros((len(t), 3))
+        A = np.array([0.5, -0.5, 0.25])
+        w = np.array([base_w, base_w*1.5, base_w*2.0])
+        phase = np.array([0.0,0.0,0.0])
+        traj_xyz = A * np.sin(t*w+phase)
+        traj_vxyz = w * A * np.cos(t*w+phase)
 
 
-        # for j in range(traj_xyz.shape[0]):
-        #     pose = PoseStamped()
-        #     pose.header.frame_id = "map"
-        #     pose.pose.position = np2point(traj_xyz[j])
-        #     traj.poses.append(pose)
+        for j in range(traj_xyz.shape[0]):
+            pose = PoseStamped()
+            pose.header.frame_id = "map"
+            pose.pose.position = np2point(traj_xyz[j])
+            traj.poses.append(pose)
 
-        # current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
-        # current_point = np.array([current_point.x, current_point.y, current_point.z])
-
-        # # takeoff trajectory
-        # target_point = current_point.copy()
-        # target_point[2] += 0.5
-        # takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 5.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 5.0).poses
-
-        # # landing trajectory
-        # target_point = current_point.copy()
-        # target_point[2] += 0.5
-        # current_point = traj_xyz[-1].copy()
-        # landing_traj_poses = line_traj(self.rate, current_point, target_point, 7.0).poses
-
-        # current_point = target_point.copy() # when close to the land, the drone is not stable
-        # target_point[2] -= 0.5
-
-        # traj.poses = takeoff_traj_poses + traj.poses + landing_traj_poses + line_traj(self.rate, current_point, target_point, 1.0).poses
-
-        # # debug: only takeoff and landing
         current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
         current_point = np.array([current_point.x, current_point.y, current_point.z])
+
+        # takeoff trajectory
         target_point = current_point.copy()
-        target_point[2] += 1.0
+        target_point[2] += 0.5
+        takeoff_traj_poses = line_traj(self.rate, current_point, target_point, 5.0).poses + line_traj(self.rate, target_point, traj_xyz[0], 5.0).poses
+
+        # landing trajectory
+        target_point = current_point.copy()
+        target_point[2] += 0.5
+        current_point = traj_xyz[-1].copy()
+        landing_traj_poses = line_traj(self.rate, current_point, target_point, 7.0).poses
+
+        current_point = target_point.copy() # when close to the land, the drone is not stable
+        target_point[2] -= 0.5
+
+        traj.poses = takeoff_traj_poses + traj.poses + landing_traj_poses + line_traj(self.rate, current_point, target_point, 1.0).poses
+
+        # # debug: only takeoff and landing
+        # current_point = self.tf_buffer.lookup_transform('map', f"{self.cf_name}", rclpy.time.Time()).transform.translation
+        # current_point = np.array([current_point.x, current_point.y, current_point.z])
+        # target_point = current_point.copy()
+        # target_point[2] += 1.0
         
-        print("current_point", current_point)
-        print("target_point", target_point)
-        traj.poses = line_traj(self.rate, current_point, target_point, 3.0).poses + line_traj(self.rate, target_point, target_point, 10.0).poses +  line_traj(self.rate, target_point, current_point, 3.0).poses
+        # print("current_point", current_point)
+        # print("target_point", target_point)
+        # traj.poses = line_traj(self.rate, current_point, target_point, 3.0).poses + line_traj(self.rate, target_point, target_point, 10.0).poses +  line_traj(self.rate, target_point, current_point, 3.0).poses
         
 
         return traj
