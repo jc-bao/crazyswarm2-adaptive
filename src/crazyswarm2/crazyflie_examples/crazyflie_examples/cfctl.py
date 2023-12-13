@@ -1,27 +1,20 @@
 from crazyflie_py import Crazyswarm
 import numpy as np
 import tf2_ros
-import transforms3d as tf3d
-from std_msgs.msg import Float32MultiArray
 import rclpy
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
-import matplotlib.pyplot as plt
-import pandas as pd
 from functools import partial
 import pickle
-from copy import deepcopy
 from line_profiler import LineProfiler
 import time
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Tuple
 
 import jax, chex
-from jax import lax
 from jax import numpy as jnp
 from quadjax import controllers
 from quadjax.envs.quad3d_free import (
-    Quad3D,
     EnvState3D as EnvState3DJax,
     EnvParams3D as EnvParams3DJax,
     Action3D as Action3DJax,
@@ -112,20 +105,8 @@ class CoVOController(controllers.MPPIZejiController):
         action = jnp.clip(action, -1.0, 1.0)
 
         action_thrust = action[:1]
-        # last_action_thrust = self.last_action[:1]
-        # action_thrust_max = last_action_thrust + 0.2
-        # action_thrust_min = last_action_thrust - 0.2
-        # action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
-
         action_omega = action[1:]
-        # last_action_omega = self.last_action[1:]
-        # action_omega_max = last_action_omega + 0.2
-        # action_omega_min = last_action_omega - 0.2
-        # action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
-
         action = jnp.concatenate([action_thrust, action_omega], axis=0)
-
-        # action = 1.0 * action + 0.0 * self.last_action
         self.last_action = action
         return action, control_params, control_info
 
@@ -161,28 +142,14 @@ class MPPIController(controllers.MPPIController):
             obs, state_jax, env_params_jax, rng_act, control_params, info
         )
         action = jnp.clip(action, -1.0, 1.0)
-
         action_thrust = action[:1]
-        # last_action_thrust = self.last_action[:1]
-        # action_thrust_max = last_action_thrust + 0.2
-        # action_thrust_min = last_action_thrust - 0.2
-        # action_thrust = jnp.clip(action_thrust, action_thrust_min, action_thrust_max)
-
         action_omega = action[1:]
-        # last_action_omega = self.last_action[1:]
-        # action_omega_max = last_action_omega + 0.2
-        # action_omega_min = last_action_omega - 0.2
-        # action_omega = jnp.clip(action_omega, action_omega_min, action_omega_max)
-
         action = jnp.concatenate([action_thrust, action_omega], axis=0)
-
-        # action = 1.0 * action + 0.0 * self.last_action
         self.last_action = action
         return action, control_params, control_info
 
 
 def get_mppi_controller():
-    # sigma = jnp.array([0.3, 0.5, 0.5, 0.3])
     sigma = jnp.array([0.4, 1.0, 1.0, 1.0])
     N = 8192
     H = 24 #32
@@ -844,37 +811,20 @@ class Crazyflie:
         """
         get state information from ros topic
         """
-        # trans_mocap = self.tf_buffer.lookup_transform('world', 'cf1', rclpy.time.Time())
-        # pos = trans_mocap.transform.translation
-        # pos = np.array([pos.x, pos.y, pos.z])
-        # quat = trans_mocap.transform.rotation
-        # quat = np.array([quat.x, quat.y, quat.z, quat.w])
-
         pos = self.pos_kf
         quat = self.quat_kf
-        # get timestamp
-        # return np.array([pos.x, pos.y, pos.z]) - self.world_center, np.array([quat.x, quat.y, quat.z, quat.w])
-
         return np.array(pos - self.world_center), np.array(quat)
 
     def set_attirate(self, omega_target, thrust_target):
         """
         set attitude rate and thrust through crazyflie lib
         """
-        # convert to degree
-        # omega_target = (
-        #     np.array(omega_target, dtype=np.float64) / np.pi * 180.0 * 0.01
-        # )  # NOTE: make sure the type is float64
         omega_target = np.array(omega_target, dtype=np.float64)
         acc_z_target = thrust_target / self.env_params.m
         self.cf.cmdFullState(
             np.zeros(3), np.zeros(3), np.array([0, 0, acc_z_target]), 0.0, omega_target
         )
-        # self.cf.cmdFullState(
-        #     np.zeros(3), np.zeros(3), np.array([0, 0, -1.0]), 0.0, np.zeros(3)
-        # )
 
-    # @do_profile()
     def step(self, action: np.ndarray):
         # step real-world state
         action = np.clip(action, -1.0, 1.0)
@@ -896,23 +846,6 @@ class Crazyflie:
         self.last_control_time = next_time
         while self.timeHelper.time() <= next_time:
             rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
-
-        # next_time = self.last_control_time + self.dt
-        # current_time = self.timeHelper.time()
-        # print(f"Frequency: {(1.0 / (current_time - self.last_control_time)):.2f} Hz")
-        # # print(f"last_control_time: {self.last_control_time%1000000:.4f}, current_time: {current_time%1000000:.4f}, next_time: {next_time%1000000:.4f}")
-
-        # if current_time > next_time:
-        #     print(f"WARNING: time difference is too large {current_time - self.last_control_time:.4f} s")
-        #     self.last_control_time = current_time
-        # else:
-        #     self.last_control_time = next_time
-        # rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
-        # #warn time out
-
-        # while self.timeHelper.time() < next_time:
-        #     rclpy.spin_once(self.swarm.allcfs, timeout_sec=0.0)
-        
 
         # update real-world state
         self.timestep += 1
@@ -1027,7 +960,6 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
 
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
-            t0 = time.time()
             (
                 action_mppi,
                 env.mppi_control_params,
@@ -1035,16 +967,9 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             ) = env.mppi_controller(
                 None, state_real, env.env_params, None, env.mppi_control_params, None
             )
-            t_mppi = time.time() - t0
-            t0 = time.time()
             action_pid, env.control_params, control_info = env.controller(
                 None, state_real, env.env_params, None, env.control_params, None
             )
-            t_pid = time.time() - t0
-            # print(f"mppi time: {(t_mppi)*1000:.2f} ms, pid time: {(t_pid)*1000:.2f} ms")
-            # add noise to PID to test system robustness
-            # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
-            # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
             if timestep <  (5)*50:
                 k = 0.001
             elif timestep < (5 + 22.5) * 50: # used to be 22.5
