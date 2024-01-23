@@ -95,6 +95,8 @@ all:
       pitch_ki: 3.0
       yaw_kp: 6.0
       yaw_ki: 1.0
+    ctrlRwik:
+      kd_omega_rp: 0.0
     # ctrlAtt:
     #   kp_rp_rate: 150.0   # 150.0 works good for hover
     #   ki_rp_rate: 20.0    # 20.0 works good for hover

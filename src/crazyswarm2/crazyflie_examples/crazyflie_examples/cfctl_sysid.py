@@ -260,18 +260,12 @@ def get_nn_controller():
         return network.apply(train_params, last_obs)
     controller = controllers.NetworkController(apply_fn, env, control_params)
     return controller, control_params
-def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
+def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
     """
     generate a trajectory with max_steps steps
     """
-    # generate still trajectory
-    pos_still = np.ones((100, 3)) * init_pos
-    pos_still[..., 2] -= 0.1  # NOTE: make sure the drone stay on the ground
-    vel_still = np.zeros_like(pos_still)
-    acc_still = np.zeros_like(pos_still)
 
     # generate take off trajectory
-    # target_pos = np.array([0.0, 0.0, 0.0])
     target_pos = np.array([0.0, 0.0, 0.0])
     t_takeoff = 3.0
     N_takeoff = int(t_takeoff / dt)
@@ -279,105 +273,73 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
     vel_takeoff = np.ones_like(pos_takeoff) * (target_pos - init_pos) / t_takeoff
     acc_takeoff = np.zeros_like(pos_takeoff)
 
-    # stablize for 2.0 second
-    t_stablize = 2.0
+    # stablize for 1.0 second
+    t_stablize = 1.0
     N_stablize = int(t_stablize / dt)
     pos_stablize = np.ones((N_stablize, 3)) * target_pos
     vel_stablize = np.zeros_like(pos_stablize)
     acc_stablize = np.zeros_like(pos_stablize)
 
-    # generate main task trajectory
-    # scale = 0.5
-    # T = 4.5
-    # w0 = 2 * np.pi / T
-    # w1 = w0 * 2
-    # generate figure 8 trajectory
-    # pos_main[:, 1] = 2 * scale * np.sin(w0 * t)
-    # vel_main[:, 1] = 2 * scale * w0 * np.cos(w0 * t)
-    # acc_main[:, 1] = -2 * scale * w0**2 * np.sin(w0 * t)
-    # pos_main[:, 2] = scale * np.sin(w1 * t)
-    # vel_main[:, 2] = scale * w1 * np.cos(w1 * t)
-    # acc_main[:, 2] = -scale * w1**2 * np.sin(w1 * t)
-
-    # generate triangle trajectory
-    time_main = 4.5
-    t = np.arange(0, time_main, dt)
-    pos_main = np.zeros((len(t), 3))
-    vel_main = np.zeros((len(t), 3))
-    acc_main = np.zeros((len(t), 3))
-    step_main = int(time_main / dt)
-    time_per_edge = 1.5
-
-    step_per_edge = int(time_per_edge / dt)
-    # triangle
-    pos_keys = (
-        np.array([[0.0, 0.0, 0.0], [0.0, 1.0, np.sqrt(3)], [0.0, -1.0, np.sqrt(3)]])
-        * 0.5
-    )
-    # # rectangle
-    # pos_keys = (
-    #     np.array(
-    #         [
-    #             [0.0, 0.0, 0.0],
-    #             [0.0, np.sqrt(2), np.sqrt(2)],
-    #             [0.0, 0.0, 2 * np.sqrt(2)],
-    #             [0.0, -np.sqrt(2), np.sqrt(2)],
-    #         ]
-    #     )
-    #     * 0.5
-    # )
-    # star
-    # angle = np.pi / 180 * 36
-    # edge_size = 0.5 / np.cos(angle)*0.75
-    # pos_keys = (
-    #     np.array(
-    #         [
-    #             [0.0, 0.0, 0.0],
-    #             [0.0, np.cos(angle * 2), np.sin(angle * 2)],
-    #             [0.0, np.cos(angle * 4)*edge_size, np.sin(angle * 4)*edge_size],
-    #             [0.0, np.cos(angle * 1)*edge_size, np.sin(angle * 1)*edge_size],
-    #             [0.0, np.cos(angle * 3), np.sin(angle * 3)],
-    #         ]
-    #     )
-    # )
-    # pos_key1 = np.array([0.0, 1.0, np.sqrt(3)])*scale
-    # pos_key2 = np.array([0.0, -1.0, np.sqrt(3)])*scale
-
-    # connect key points
-    for i in range(step_main):
-        edge_idx = i // step_per_edge
-        edge_start_point_idx = edge_idx % pos_keys.shape[0]
-        edge_end_point_idx = (edge_idx + 1) % pos_keys.shape[0]
-        edge_start_point = pos_keys[edge_start_point_idx]
-        edge_end_point = pos_keys[edge_end_point_idx]
-        idx_in_edge = i % step_per_edge
-        pos_main[i] = (
-            edge_start_point
-            + (edge_end_point - edge_start_point) * idx_in_edge / step_per_edge
-        )
-        vel_main[i] = (edge_end_point - edge_start_point) / time_per_edge
-        acc_main[i] = np.zeros(3)
-
-    # # connect key points
-    # pos_main[:len(t)//3, :] = np.linspace(pos_key0, pos_key1, len(t)//3)
-    # pos_main[len(t)//3:2*len(t)//3, :] = np.linspace(pos_key1, pos_key2, len(t)//3)
-    # pos_main[2*len(t)//3:, :] = np.linspace(pos_key2, pos_key0, len(t)//3)
-    # # calculate velocity and acceleration
-    # vel_main[:len(t)//3, :] = (pos_key1 - pos_key0) / (len(t)//3) / dt
-    # vel_main[len(t)//3:2*len(t)//3, :] = (pos_key2 - pos_key1) / (len(t)//3) / dt
-    # vel_main[2*len(t)//3:, :] = (pos_key0 - pos_key2) / (len(t)//3) / dt
-    # acc_main[:len(t)//3, :] = np.zeros(3)
-
-    # if path is not None:
-    # import pandas as pd
-    # df = pd.read_csv('/home/pcy/Research/code/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/data/lecar2.csv')
-    # pos_main = np.array(df[['y', 'x', 'z']].values)
-    # pos_main *= 0.5
-    # pos_main[:, 1] = -pos_main[:, 1]
-    # pos_main[:, 1] *= 1.5
-    # pos_main -= pos_main[0]
-    # vel_main = np.zeros_like(pos_main)
-    # acc_main = np.zeros_like(pos_main)
+    # generate test trajectory
+    t_task = 2.0
+    if mode == "0":
+        target_pos = np.array([0.0, 0.0, 0.0])
+        pos_task = np.ones((int(t_task / dt), 3)) * target_pos
+        vel_task = np.zeros_like(pos_task)
+        acc_task = np.zeros_like(pos_task)
+    elif mode == "x" or mode == "y" or mode == "xy" or mode == "yx":
+        if mode == "x":
+            points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+        elif mode == "y":
+            points = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0,0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
+        elif mode == "xy":
+            points = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0,0.0, 0.0], [-1.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
+        elif mode == "yx":
+            points = np.array([[0.0, 0.0, 0.0], [-1.0, 1.0, 0.0], [0.0,0.0, 0.0], [1.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
+        pos_task = np.zeros((int(t_task / dt), 3))
+        vel_task = np.zeros_like(pos_task)
+        acc_task = np.zeros_like(pos_task)
+        for i in range(1, len(points)):
+            pos_task[i * int(t_task / dt) // len(points) : (i + 1) * int(t_task / dt) // len(points)] = np.linspace(points[i - 1], points[i], (int(t_task / dt) // len(points)))
+            vel_task[i * int(t_task / dt) // len(points) : (i + 1) * int(t_task / dt) // len(points)] = (points[i] - points[i - 1]) / (t_task / len(points))
+    elif mode == "o_xy":
+        tt_task = np.linspace(0, 2 * np.pi, int(t_task / dt))
+        w0 = 2 * np.pi / t_task
+        x_task = np.cos(w0 * tt_task) - 1.0
+        y_task = np.sin(w0 * tt_task)
+        z_task = np.zeros_like(x_task)
+        pos_task = np.stack([x_task, y_task, z_task], axis=-1)
+        vel_task = np.stack([-w0 * np.sin(w0 * tt_task), w0 * np.cos(w0 * tt_task), np.zeros_like(x_task)], axis=-1)
+        acc_task = np.stack([-w0**2 * np.cos(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task), np.zeros_like(x_task)], axis=-1)
+    elif mode == "o_yz":
+        tt_task = np.linspace(0, 2 * np.pi, int(t_task / dt))
+        w0 = 2 * np.pi / t_task
+        x_task = np.zeros_like(tt_task)
+        y_task = np.cos(w0 * tt_task) - 1.0
+        z_task = np.sin(w0 * tt_task)
+        pos_task = np.stack([x_task, y_task, z_task], axis=-1)
+        vel_task = np.stack([np.zeros_like(x_task), -w0 * np.sin(w0 * tt_task), w0 * np.cos(w0 * tt_task)], axis=-1)
+        acc_task = np.stack([np.zeros_like(x_task), -w0**2 * np.cos(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task)], axis=-1)
+    elif mode == "o_zx":
+        tt_task = np.linspace(0, 2 * np.pi, int(t_task / dt))
+        w0 = 2 * np.pi / t_task
+        x_task = np.sin(w0 * tt_task)
+        y_task = np.zeros_like(tt_task)
+        z_task = np.cos(w0 * tt_task) - 1.0
+        pos_task = np.stack([x_task, y_task, z_task], axis=-1)
+        vel_task = np.stack([w0 * np.cos(w0 * tt_task), np.zeros_like(x_task), -w0 * np.sin(w0 * tt_task)], axis=-1)
+        acc_task = np.stack([-w0**2 * np.sin(w0 * tt_task), np.zeros_like(x_task), -w0**2 * np.cos(w0 * tt_task)], axis=-1)
+    elif mode == "o_xyz":
+        tt_task = np.linspace(0, 2 * np.pi, int(t_task / dt))
+        w0 = 2 * np.pi / t_task
+        x_task = np.cos(w0 * tt_task) - 1.0
+        y_task = np.sin(w0 * tt_task)
+        z_task = np.sin(w0 * tt_task)
+        pos_task = np.stack([x_task, y_task, z_task], axis=-1)
+        vel_task = np.stack([-w0 * np.sin(w0 * tt_task), w0 * np.cos(w0 * tt_task), w0 * np.cos(w0 * tt_task)], axis=-1)
+        acc_task = np.stack([-w0**2 * np.cos(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task)], axis=-1)
+    else:
+        raise NotImplementedError
 
     # generate landing trajectory by inverse the takeoff trajectory
     pos_landing = pos_takeoff[::-1]
@@ -385,13 +347,12 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
     acc_landing = -acc_takeoff[::-1]
 
     # concatenate all trajectories
-    repeat_times = 1
     pos = np.concatenate(
         [
             pos_takeoff,
             pos_stablize,
-            *([pos_main] * repeat_times),
-            pos_stablize,
+            pos_task, 
+            pos_stablize, 
             pos_landing,
         ],
         axis=0,
@@ -400,8 +361,8 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
         [
             vel_takeoff,
             vel_stablize,
-            *([vel_main] * repeat_times),
-            vel_stablize,
+            vel_task, 
+            vel_stablize, 
             vel_landing,
         ],
         axis=0,
@@ -410,18 +371,12 @@ def generate_traj(init_pos: np.array, dt: float) -> np.ndarray:
         [
             acc_takeoff,
             acc_stablize,
-            *([acc_main] * repeat_times),
-            acc_stablize,
+            acc_task, 
+            acc_stablize, 
             acc_landing,
         ],
         axis=0,
     )
-    # pos = np.concatenate([pos_takeoff, pos_stablize, pos_stablize, pos_landing], axis=0)
-    # vel = np.concatenate([vel_takeoff, vel_stablize, vel_stablize, vel_landing], axis=0)
-    # acc = np.concatenate([acc_takeoff, acc_stablize, acc_stablize, acc_landing], axis=0)
-    # pos = np.ones((250, 3)) * init_pos
-    # vel = np.zeros_like(pos)
-    # acc = np.zeros_like(pos)
 
     return pos, vel, acc
 
@@ -993,7 +948,6 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
     env = Crazyflie(enable_logging=enable_logging, mode=mode)
 
     try:
-        env.cf.setParam("usd.logging", 1)
         state_real = env.state_real
 
         # update controller parameters for CoVO controller only
@@ -1041,7 +995,6 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
         env.timestep = 0
         print("finish empty running controller ... ")
 
-
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
             t0 = time.time()
@@ -1062,18 +1015,42 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             # add noise to PID to test system robustness
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
-            if timestep <  (5)*50:
-                k = 0.001
-            # elif timestep < (5 + 0.5) * 50: # used to be 22.5
-            #     print("k = 1.0")
-            #     k = 1.0
-            elif timestep < (5 + 0.5) * 50: # used to be 22.5
-                k = 1.0
-            elif timestep < (5 + 4.5) * 50: # used to be 22.5
-                k = 0.01
-            else:
-                k = 0.001
-            # k = 0.0
+            
+            if timestep == int((4.0-0.1)*50):
+                env.cf.setParam("usd.logging", 1)
+            elif timestep == int((4.0 + 2.0 + 0.1) * 50):
+                env.cf.setParam("usd.logging", 0)
+            # elif timestep == int((5.0 - 0.1) * 50):
+            #     env.cf.setParam("usd.logging", 1)
+            # elif timestep == int((5.0 + 0.1 + 0.1) * 50):
+            #     env.cf.setParam("usd.logging", 0)
+            # elif timestep == int((7.0 - 0.1) * 50):
+            #     env.cf.setParam("usd.logging", 1)
+            # elif timestep == int((7.0 + 0.1 + 0.1) * 50):
+            #     env.cf.setParam("usd.logging", 0)
+
+            # if timestep <  (3.0)*50:
+            #     k = 0.0
+            # elif timestep < (3 + 0.1) * 50: 
+            #     k = 0.0
+            #     action_pid = np.array([0.0, 0.5, 0.0, 0.0])
+            # elif timestep < (5.0) * 50: 
+            #     k = 0.0
+            # elif timestep < (5.0 + 0.1) * 50:
+            #     action_pid = np.array([0.0, -0.5, 0.0, 0.0])
+            #     k = 0.0
+            # elif timestep < (7.0) * 50:
+            #     k = 0.0
+            # elif timestep < (7.0 + 0.1) * 50:
+            #     action_pid = np.array([0.0, 0.7, 0.0, 0.0])
+            #     k = 0.0
+            # elif timestep < (3.0 + 10.0) * 50: 
+            #     k = 0.0
+            # elif timestep < (3.0 + 10.0 + 3.0) * 50: 
+            #     k = 0.0
+            # else:
+            #     k = 0.0
+            k = 0.0
             action_applied = action_mppi * k + action_pid * (1 - k)
             obs_real, state_real, reward_real, done_real, info_real = env.step(
                 action_applied
