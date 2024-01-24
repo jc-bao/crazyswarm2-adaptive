@@ -260,6 +260,7 @@ def get_nn_controller():
         return network.apply(train_params, last_obs)
     controller = controllers.NetworkController(apply_fn, env, control_params)
     return controller, control_params
+
 def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
     """
     generate a trajectory with max_steps steps
@@ -293,9 +294,9 @@ def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
         elif mode == "y":
             points = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0,0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
         elif mode == "xy":
-            points = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0,0.0, 0.0], [-1.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
+            points = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0,0.0, 0.0], [-1.0, -1.0, 0.0], [0.0, 0.0, 0.0]]) / np.sqrt(2)
         elif mode == "yx":
-            points = np.array([[0.0, 0.0, 0.0], [-1.0, 1.0, 0.0], [0.0,0.0, 0.0], [1.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
+            points = np.array([[0.0, 0.0, 0.0], [-1.0, 1.0, 0.0], [0.0,0.0, 0.0], [1.0, -1.0, 0.0], [0.0, 0.0, 0.0]]) / np.sqrt(2)
         pos_task = np.zeros((int(t_task / dt), 3))
         vel_task = np.zeros_like(pos_task)
         acc_task = np.zeros_like(pos_task)
@@ -313,25 +314,25 @@ def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
         acc_task = np.stack([-w0**2 * np.cos(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task), np.zeros_like(x_task)], axis=-1)
     elif mode == "o_yz":
         tt_task = np.linspace(0, 2 * np.pi, int(t_task / dt))
-        w0 = 2 * np.pi / t_task
+        w0 = 2 * np.pi / t_task  / 2
         x_task = np.zeros_like(tt_task)
         y_task = np.cos(w0 * tt_task) - 1.0
         z_task = np.sin(w0 * tt_task)
-        pos_task = np.stack([x_task, y_task, z_task], axis=-1)
-        vel_task = np.stack([np.zeros_like(x_task), -w0 * np.sin(w0 * tt_task), w0 * np.cos(w0 * tt_task)], axis=-1)
+        pos_task = np.stack([x_task, y_task, z_task], axis=-1)/2
+        vel_task = np.stack([np.zeros_like(x_task), -w0 * np.sin(w0 * tt_task), w0 * np.cos(w0 * tt_task)], axis=-1)/2
         acc_task = np.stack([np.zeros_like(x_task), -w0**2 * np.cos(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task)], axis=-1)
     elif mode == "o_zx":
         tt_task = np.linspace(0, 2 * np.pi, int(t_task / dt))
-        w0 = 2 * np.pi / t_task
-        x_task = np.sin(w0 * tt_task)
+        w0 = 2 * np.pi / t_task / 2
+        x_task = np.cos(w0 * tt_task) - 1.0
         y_task = np.zeros_like(tt_task)
-        z_task = np.cos(w0 * tt_task) - 1.0
+        z_task = np.sin(w0 * tt_task)
         pos_task = np.stack([x_task, y_task, z_task], axis=-1)
         vel_task = np.stack([w0 * np.cos(w0 * tt_task), np.zeros_like(x_task), -w0 * np.sin(w0 * tt_task)], axis=-1)
         acc_task = np.stack([-w0**2 * np.sin(w0 * tt_task), np.zeros_like(x_task), -w0**2 * np.cos(w0 * tt_task)], axis=-1)
     elif mode == "o_xyz":
         tt_task = np.linspace(0, 2 * np.pi, int(t_task / dt))
-        w0 = 2 * np.pi / t_task
+        w0 = 2 * np.pi / t_task / 2
         x_task = np.cos(w0 * tt_task) - 1.0
         y_task = np.sin(w0 * tt_task)
         z_task = np.sin(w0 * tt_task)
@@ -340,6 +341,10 @@ def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
         acc_task = np.stack([-w0**2 * np.cos(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task), -w0**2 * np.sin(w0 * tt_task)], axis=-1)
     else:
         raise NotImplementedError
+    scale = 0.5
+    pos_task = pos_task * scale
+    vel_task = vel_task * scale
+    acc_task = acc_task * scale
 
     # generate landing trajectory by inverse the takeoff trajectory
     pos_landing = pos_takeoff[::-1]
@@ -731,7 +736,7 @@ class Crazyflie:
         pos, quat = self.get_drone_state()
         self.pos_hist[-1] = pos
         self.quat_hist[-1] = quat
-        self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(pos, self.dt)
+        self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(pos, self.dt, mode="o_zx")
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
@@ -998,13 +1003,14 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):
             t0 = time.time()
-            (
-                action_mppi,
-                env.mppi_control_params,
-                mppi_control_info,
-            ) = env.mppi_controller(
-                None, state_real, env.env_params, None, env.mppi_control_params, None
-            )
+            # (
+            #     action_mppi,
+            #     env.mppi_control_params,
+            #     mppi_control_info,
+            # ) = env.mppi_controller(
+            #     None, state_real, env.env_params, None, env.mppi_control_params, None
+            # )
+            action_mppi = np.zeros(4)
             t_mppi = time.time() - t0
             t0 = time.time()
             action_pid, env.control_params, control_info = env.controller(
