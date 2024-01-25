@@ -18,14 +18,14 @@ static float m = 0.0411;
 static float massThrust = 85000;                                 // emperical value for hovering.
 
 // PID parameters
-static float kp_wxy = 4000.0;
-static float kd_wxy = 40.0;
-static float ki_wxy = 2500.0;
+static float kp_wxy = 750.0;
+static float kd_wxy = 8.0;
+static float ki_wxy = 500.0;
 static float i_range_wxy = 1.0;
 
-static float kp_wz = 2000.0;
-static float kd_wz = 12.0;
-static float ki_wz = 1000;
+static float kp_wz = 400.0;
+static float kd_wz = 2.0;
+static float ki_wz = 200.0;
 static float i_range_wz = 1.0;
 
 static float kp_accz = 1.0;
