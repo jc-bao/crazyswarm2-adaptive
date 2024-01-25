@@ -14,8 +14,9 @@ NOTEs: the unit use here
 */
 
 // Dynamic parameters
-static float g_vehicleMass = CF_MASS;
-static float massThrust = 132000; // emperical value for hovering. 
+static float m = CF_MASS;
+static struct vec I = {16.571710e-6, 16.571710e-6, 29.261652e-6}; // moment of inertia
+static float massThrust = 132000;                                 // emperical value for hovering.
 
 // PID parameters
 static float kp_wxy = 2000.0;
@@ -28,32 +29,51 @@ static float kd_wz = 12.0;
 static float ki_wz = 1000;
 static float i_range_wz = 1.0;
 
+static float kp_accz = 1.0;
+static float ki_accz = 0.1;
+static float i_range_accz = 0.2;
+
 // PID intermediate variables
 static float p_error_wx = 0.0;
 static float p_error_wy = 0.0;
 static float p_error_wz = 0.0;
+static float p_error_accz = 0.0;
 static float i_error_wx = 0.0;
 static float i_error_wy = 0.0;
 static float i_error_wz = 0.0;
+static float i_error_accz = 0.0;
 static float d_error_wx = 0.0;
 static float d_error_wy = 0.0;
 static float d_error_wz = 0.0;
+static float prev_p_error_wx = 0.0;
+static float prev_p_error_wy = 0.0;
+static float prev_p_error_wz = 0.0;
+
+// PID output
+static float torquex_des = 0.0;
+static float torquey_des = 0.0;
+static float torquez_des = 0.0;
+static float thrust_des = 0.0;
 
 // Setpoint variables
-static float omega_x;
-static float omega_y;
-static float omega_z;
-static float acc_z;
-static float omega_x_des;
-static float omega_y_des;
-static float omega_z_des;
-static float acc_z_des;
+static float wx;
+static float wy;
+static float wz;
+static float az;
+static float wx_des;
+static float wy_des;
+static float wz_des;
+static float az_des;
 
 void controllerINDIReset(void)
 {
   i_error_wx = 0;
   i_error_wy = 0;
   i_error_wz = 0;
+  i_error_accz = 0;
+  prev_p_error_wx = 0;
+  prev_p_error_wy = 0;
+  prev_p_error_wz = 0;
 }
 
 void controllerINDIInit(void)
@@ -67,34 +87,38 @@ bool controllerINDITest(void)
 }
 
 void controllerINDI(control_t *control, const setpoint_t *setpoint,
-                                         const sensorData_t *sensors,
-                                         const state_t *state,
-                                         const uint32_t tick)
+                    const sensorData_t *sensors,
+                    const state_t *state,
+                    const uint32_t tick)
 {
   // set to custom power distribution controller
   control->controlMode = controlModeForce;
 
-  struct vec ew, M;
   float dt;
-  if (!RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
+  if (!RATE_DO_EXECUTE(ATTITUDE_RATE, tick))
+  {
     return;
   }
-
-  dt = (float)(1.0f/ATTITUDE_RATE);
+  dt = (float)(1.0f / ATTITUDE_RATE);
 
   // Angular velocity setpoint
-  omega_x = radians(setpoint->attitudeRate.roll);
-  omega_y = -radians(setpoint->attitudeRate.pitch);
-  omega_z = radians(setpoint->attitudeRate.yaw);
+  wx_des = radians(setpoint->attitudeRate.roll);
+  wy_des = -radians(setpoint->attitudeRate.pitch);
+  wz_des = radians(setpoint->attitudeRate.yaw);
+  az_des = setpoint->acceleration.z;
+  // NOTE: gyro observation might be noisy, need to check
+  float wx = radians(sensors->gyro.x);
+  float wy = -radians(sensors->gyro.y);
+  float wz = radians(sensors->gyro.z);
+  // NOTE: acc_z's unit is Gs, need to convert to m/s^2
+  // NOTE: need to check az frame
+  float az = state->acc.z * 9.81;
 
-  // Angular velocity Controller
-  float stateAttitudeRateRoll = radians(sensors->gyro.x);
-  float stateAttitudeRatePitch = -radians(sensors->gyro.y);
-  float stateAttitudeRateYaw = radians(sensors->gyro.z);
-
-  p_error_wx = omega_x - stateAttitudeRateRoll;
-  p_error_wy = omega_y - stateAttitudeRatePitch;
-  p_error_wz = omega_z - stateAttitudeRateYaw;
+  // PID controller
+  p_error_wx = wx_des - wx;
+  p_error_wy = wy_des - wy;
+  p_error_wz = wz_des - wz;
+  p_error_accz = az_des - az;
 
   i_error_wx += p_error_wx * dt;
   i_error_wx = clamp(i_error_wx, -i_range_wxy, i_range_wxy);
@@ -102,83 +126,79 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   i_error_wy = clamp(i_error_wy, -i_range_wxy, i_range_wxy);
   i_error_wz += p_error_wz * dt;
   i_error_wz = clamp(i_error_wz, -i_range_wz, i_range_wz);
+  i_error_accz += p_error_accz * dt;
+  i_error_accz = clamp(i_error_accz, -i_range_accz, i_range_accz);
 
   d_error_wx = (p_error_wx - prev_p_error_wx) / dt;
+  d_error_wy = (p_error_wy - prev_p_error_wy) / dt;
+  d_error_wz = (p_error_wz - prev_p_error_wz) / dt;
 
-  // for logging
-  i_roll = i_error_omega_roll;
-  i_pitch = i_error_omega_pitch;
-  i_yaw = i_error_omega_yaw;
+  prev_p_error_wx = p_error_wx;
+  prev_p_error_wy = p_error_wy;
+  prev_p_error_wz = p_error_wz;
 
-  // derivative terms
-  float err_d_roll = 0;
-  float err_d_pitch = 0;
-  if (prev_omega_roll == prev_omega_roll) { /*d part initialized*/
-    err_d_roll = ((radians(setpoint->attitudeRate.roll) - prev_setpoint_omega_roll) - (stateAttitudeRateRoll - prev_omega_roll)) / dt;
-    err_d_pitch = (-(radians(setpoint->attitudeRate.pitch) - prev_setpoint_omega_pitch) - (stateAttitudeRatePitch - prev_omega_pitch)) / dt;
-  }
-  prev_omega_roll = stateAttitudeRateRoll;
-  prev_omega_pitch = stateAttitudeRatePitch;
-  prev_setpoint_omega_roll = radians(setpoint->attitudeRate.roll);
-  prev_setpoint_omega_pitch = radians(setpoint->attitudeRate.pitch);
+  float alphax_des = kp_wxy * p_error_wx + kd_wxy * d_error_wx + ki_wxy * i_error_wx;
+  float alphay_des = kp_wxy * p_error_wy + kd_wxy * d_error_wy + ki_wxy * i_error_wy;
+  float alphaz_des = kp_wz * p_error_wz + kd_wz * d_error_wz + ki_wz * i_error_wz;
+  float az_thrust_des = kp_accz * p_error_accz + ki_accz * i_error_accz;
 
-  M.x = kw_xy * ew.x + ki_w_x*i_error_omega_roll + kd_omega_rp*err_d_roll; 
-  M.y = kw_xy * ew.y + ki_w_y*i_error_omega_pitch + kd_omega_rp*err_d_pitch;
-  M.z = kw_z  * ew.z + ki_w_z*i_error_omega_yaw;
+  // convert into torque and thrust
+  // torque = I * alpha + w x I * w
+  torquex_des = alphax_des * I.x + wx * (wy * I.z - wz * I.y);
+  torquey_des = alphay_des * I.y + wy * (wz * I.x - wx * I.z);
+  torquez_des = alphaz_des * I.z + wz * (wx * I.y - wy * I.x);
+  thrust_des = m * az_thrust_des;
 
   // Sending values to the motor
-  control->thrust = massThrust * g_vehicleMass * setpoint->acceleration.z;
-  thrust_des = control->thrust;
-  r_roll = radians(sensors->gyro.x);
-  r_pitch = -radians(sensors->gyro.y);
-  r_yaw = radians(sensors->gyro.z);
-  acc_z = sensors->acc.z;
-
-  if (control->thrust > 0) {
-    control->roll = clamp(M.x, -32000, 32000);
-    control->pitch = clamp(M.y, -32000, 32000);
-    control->yaw = clamp(-M.z, -32000, 32000);
-
-    omega_x_des = control->roll;
-    omega_y_des = control->pitch;
-    omega_z_des = control->yaw;
-
-  } else {
-    control->roll = 0;
-    control->pitch = 0;
-    control->yaw = 0;
-
-    omega_x_des = control->roll;
-    omega_y_des = control->pitch;
-    omega_z_des = control->yaw;
-
-    controllerINDIReset();
-  }
+  control->torqueX = torquex_des;
+  control->torqueY = torquey_des;
+  control->torqueZ = torquez_des;
+  control->thrust = thrust_des;
 }
 
-PARAM_GROUP_START(ctrlRwik)
-PARAM_ADD(PARAM_FLOAT, mass, &g_vehicleMass)
+PARAM_GROUP_START(ctrlBodyrate)
+PARAM_ADD(PARAM_FLOAT, m, &m)
 PARAM_ADD(PARAM_FLOAT, massThrust, &massThrust)
-PARAM_ADD(PARAM_FLOAT, kw_xy, &kw_xy)
-PARAM_ADD(PARAM_FLOAT, kw_z, &kw_z)
-PARAM_ADD(PARAM_FLOAT, kd_omega_rp, &kd_omega_rp)
-PARAM_ADD(PARAM_FLOAT, ki_w_z, &ki_w_z)
-PARAM_ADD(PARAM_FLOAT, ki_w_x, &ki_w_x)
-PARAM_ADD(PARAM_FLOAT, ki_w_y, &ki_w_y)
+PARAM_ADD(PARAM_FLOAT, kp_wxy, &kp_wxy)
+PARAM_ADD(PARAM_FLOAT, kd_wxy, &kd_wxy)
+PARAM_ADD(PARAM_FLOAT, ki_wxy, &ki_wxy)
+PARAM_ADD(PARAM_FLOAT, i_range_wxy, &i_range_wxy)
+PARAM_ADD(PARAM_FLOAT, kp_wz, &kp_wz)
+PARAM_ADD(PARAM_FLOAT, kd_wz, &kd_wz)
+PARAM_ADD(PARAM_FLOAT, ki_wz, &ki_wz)
+PARAM_ADD(PARAM_FLOAT, i_range_wz, &i_range_wz)
+PARAM_ADD(PARAM_FLOAT, kp_accz, &kp_accz)
+PARAM_ADD(PARAM_FLOAT, ki_accz, &ki_accz)
+PARAM_ADD(PARAM_FLOAT, i_range_accz, &i_range_accz)
 
-PARAM_GROUP_STOP(ctrlRwik)
+PARAM_GROUP_STOP(ctrlBodyrate)
 
-LOG_GROUP_START(ctrlRwik)
-LOG_ADD(LOG_FLOAT, acc_z_des, &thrust_des)
-LOG_ADD(LOG_FLOAT, omega_x_des, &omega_x_des)
-LOG_ADD(LOG_FLOAT, omega_y_des, &omega_y_des)
-LOG_ADD(LOG_FLOAT, omega_z_des, &omega_z_des)
-LOG_ADD(LOG_FLOAT, acc_z, &acc_z)
+LOG_GROUP_START(ctrlBodyrate)
+LOG_ADD(LOG_FLOAT, p_error_wx, &p_error_wx)
+LOG_ADD(LOG_FLOAT, p_error_wy, &p_error_wy)
+LOG_ADD(LOG_FLOAT, p_error_wz, &p_error_wz)
+LOG_ADD(LOG_FLOAT, p_error_accz, &p_error_accz)
+LOG_ADD(LOG_FLOAT, i_error_wx, &i_error_wx)
+LOG_ADD(LOG_FLOAT, i_error_wy, &i_error_wy)
+LOG_ADD(LOG_FLOAT, i_error_wz, &i_error_wz)
+LOG_ADD(LOG_FLOAT, i_error_accz, &i_error_accz)
+LOG_ADD(LOG_FLOAT, d_error_wx, &d_error_wx)
+LOG_ADD(LOG_FLOAT, d_error_wy, &d_error_wy)
+LOG_ADD(LOG_FLOAT, d_error_wz, &d_error_wz)
+LOG_ADD(LOG_FLOAT, prev_p_error_wx, &prev_p_error_wx)
+LOG_ADD(LOG_FLOAT, prev_p_error_wy, &prev_p_error_wy)
+LOG_ADD(LOG_FLOAT, prev_p_error_wz, &prev_p_error_wz)
+LOG_ADD(LOG_FLOAT, torquex_des, &torquex_des)
+LOG_ADD(LOG_FLOAT, torquey_des, &torquey_des)
+LOG_ADD(LOG_FLOAT, torquez_des, &torquez_des)
+LOG_ADD(LOG_FLOAT, thrust_des, &thrust_des)
+LOG_ADD(LOG_FLOAT, wx, &wx)
+LOG_ADD(LOG_FLOAT, wy, &wy)
+LOG_ADD(LOG_FLOAT, wz, &wz)
+LOG_ADD(LOG_FLOAT, az, &az)
+LOG_ADD(LOG_FLOAT, wx_des, &wx_des)
+LOG_ADD(LOG_FLOAT, wy_des, &wy_des)
+LOG_ADD(LOG_FLOAT, wz_des, &wz_des)
+LOG_ADD(LOG_FLOAT, az_des, &az_des)
 
-LOG_ADD(LOG_FLOAT, omega_x, &omega_x)
-LOG_ADD(LOG_FLOAT, omega_y, &omega_y)
-LOG_ADD(LOG_FLOAT, omega_z, &omega_z)
-
-LOG_ADD(LOG_FLOAT, cmd_z_acc, &cmd_z_acc)
-
-LOG_GROUP_STOP(ctrlRwik)
+LOG_GROUP_STOP(ctrlBodyrate)
