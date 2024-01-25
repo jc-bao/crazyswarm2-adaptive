@@ -161,10 +161,10 @@ static void powerDistributionForce(const control_t *control, motors_thrust_uncap
   static float motorForces[STABILIZER_NR_OF_MOTORS];
 
   const float arm = 0.707106781f * armLength;
-  const float rollPart = 0.25f / arm * control->torqueX;
-  const float pitchPart = 0.25f / arm * control->torqueY;
-  const float thrustPart = 0.25f * control->thrustSi; // N (per rotor)
-  const float yawPart = 0.25f * control->torqueZ / thrustToTorque;
+  const float rollPart = 0.25f / arm * control->tau_x;
+  const float pitchPart = 0.25f / arm * control->tau_y;
+  const float thrustPart = 0.25f * control->T; // N (per rotor)
+  const float yawPart = 0.25f * control->tau_z / thrustToTorque;
 
   motorForces[0] = thrustPart - rollPart - pitchPart - yawPart;
   motorForces[1] = thrustPart - rollPart + pitchPart + yawPart;
@@ -178,7 +178,29 @@ static void powerDistributionForce(const control_t *control, motors_thrust_uncap
     }
 
     // NOTE: here, I use simple linear model to convert force to pwm. need further identification
-    float motor_pwm = motorForce * 132000.0f / 65535.0f;
+    // mass to pwm ratio = 85000, force=1.0/4 N, pwm=85000
+    float motor_pwm = motorForce * 5.188f; // / 0.25f * 85000.0f / 65535.0f; // range: 0 - 1.0
+
+    // add to log here
+    switch (motorIndex)
+    {
+    case 0:
+      cmd_pwm1 = motor_pwm;
+      cmd_f1 = motorForces[motorIndex];
+      break;
+    case 1:
+      cmd_pwm2 = motor_pwm;
+      cmd_f2 = motorForces[motorIndex];
+      break;
+    case 2:
+      cmd_pwm3 = motor_pwm;
+      cmd_f3 = motorForces[motorIndex];
+      break;
+    case 3:
+      cmd_pwm4 = motor_pwm;
+      cmd_f4 = motorForces[motorIndex];
+      break;
+    }
 
     motorThrustUncapped->list[motorIndex] = motor_pwm * UINT16_MAX;
   }
@@ -239,6 +261,10 @@ LOG_ADD(LOG_FLOAT, cmd_pwm1, &cmd_pwm1)
 LOG_ADD(LOG_FLOAT, cmd_pwm2, &cmd_pwm2)
 LOG_ADD(LOG_FLOAT, cmd_pwm3, &cmd_pwm3)
 LOG_ADD(LOG_FLOAT, cmd_pwm4, &cmd_pwm4)
+LOG_ADD(LOG_FLOAT, cmd_f1, &cmd_f1)
+LOG_ADD(LOG_FLOAT, cmd_f2, &cmd_f2)
+LOG_ADD(LOG_FLOAT, cmd_f3, &cmd_f3)
+LOG_ADD(LOG_FLOAT, cmd_f4, &cmd_f4)
 LOG_GROUP_STOP(power)
 
 /**

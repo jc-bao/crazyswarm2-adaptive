@@ -14,16 +14,16 @@ NOTEs: the unit use here
 */
 
 // Dynamic parameters
-static float m = 0.0411;
-static float massThrust = 85000;                                 // emperical value for hovering.
+static float m = CF_MASS;
+static float massThrust = 132000;                                 // emperical value for hovering.
 
 // PID parameters
-static float kp_wxy = 4000.0;
-static float kd_wxy = 40.0;
-static float ki_wxy = 2500.0;
+static float kp_wxy = 2000.0;
+static float kd_wxy = 20.0;
+static float ki_wxy = 500.0;
 static float i_range_wxy = 1.0;
 
-static float kp_wz = 2000.0;
+static float kp_wz = 1200.0;
 static float kd_wz = 12.0;
 static float ki_wz = 1000;
 static float i_range_wz = 1.0;
@@ -109,9 +109,9 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   float wx = radians(sensors->gyro.x);
   float wy = -radians(sensors->gyro.y);
   float wz = radians(sensors->gyro.z);
-  // NOTE: acc_z's unit is Gs, need to convert to m/s^2, and acc_z does not include gravity
+  // NOTE: acc_z's unit is Gs, need to convert to m/s^2
   // NOTE: need to check az frame
-  float az = state->acc.z * 9.81f - 9.81f;
+  float az = state->acc.z * 9.81f;
 
   // PID controller
   p_error_wx = wx_des - wx;
@@ -143,26 +143,17 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
 
   // convert into torque and thrust
   struct vec I = {16.571710e-6, 16.571710e-6, 29.261652e-6}; // moment of inertia
-  // single motor thrust limit = 0.19N, max torque = 1e-2 N.m
   // torque = I * alpha + w x I * w
   torquex_des = alphax_des * I.x + wx * (wy * I.z - wz * I.y);
   torquey_des = alphay_des * I.y + wy * (wz * I.x - wx * I.z);
   torquez_des = alphaz_des * I.z + wz * (wx * I.y - wy * I.x);
   thrust_des = m * az_thrust_des;
-  torquex_des = clamp(torquex_des, -1e-2, 1e-2);
-  torquey_des = clamp(torquey_des, -1e-2, 1e-2);
-  torquez_des = clamp(torquez_des, -1e-2, 1e-2);
-  thrust_des = clamp(thrust_des, 0.0, 0.19);
 
   // Sending values to the motor
-  control->tau_x = torquex_des;
-  control->tau_x = torquey_des;
-  control->tau_x = torquez_des;
-  if (setpoint->mode.z == modeDisable) {
-    control->T = setpoint->thrust;
-  } else {
-    control->T = thrust_des;
-  }
+  control->torqueX = torquex_des;
+  control->torqueY = torquey_des;
+  control->torqueZ = torquez_des;
+  control->thrust = thrust_des;
 }
 
 PARAM_GROUP_START(ctrlRwik)
