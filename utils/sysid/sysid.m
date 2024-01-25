@@ -1,13 +1,22 @@
 % using the system identification toolbox
 
 % load mat file
-load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/data_x.mat');
+% load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/data_x.mat');
+% y = xs_true_x;
+% u = us_x;
+% load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/data_y.mat');
+% y = xs_true_y;
+% u = us_y;
+% load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/data_xy.mat');
+% y = xs_true_xy;
+% u = us_xy;
+load('/home/pcy/Research/code/crazyswarm2-adaptive/data_pwm_acc.mat');
+y = acc;
+u = pwm_normed;
 
 % create data
-y = xs_true_x;
-u = us_x;
 frequency = 500;
-substep = 10;
+substep = 1;
 
 % append zeros before u and y
 y = [zeros(1,20),y].';
@@ -23,18 +32,22 @@ frequency_sampled = frequency/substep;
 data = iddata(y_sampled,u_sampled,1/frequency_sampled);
 
 % create model with tfest
-model = tfest(data,2,1);
+model = tfest(data,2,0);
 % get poles and zeros
 [z,p,k] = zpkdata(model);
-p
+k
+p{1}
+z{1}
 
 % using model to predict y
 % load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/roll_rate_test2.mat');
 % u = us2.'; y = xs_true2.';
 % load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/roll_rate_test3.mat');
 % u = us3.'; y = xs_true3.';
-load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/data_xy.mat');
-u = us_xy; y = xs_true_xy; t = ts_xy;
+% load('/home/pcy/Research/code/crazyswarm2-adaptive/utils/crazyflie-firmware-adaptive/tools/usdlog/data_xy.mat');
+% u = us_xy; y = xs_true_xy; t = ts_xy;
+load('/home/pcy/Research/code/crazyswarm2-adaptive/data_pwm_acc_2.mat')
+u = pwm_normed; y = acc; t = 0:1/frequency:(length(y)-1)/frequency;
 u_sampled = u(1:substep:end);
 y_sampled = y(1:substep:end);
 t_sampled = t(1:substep:end); 

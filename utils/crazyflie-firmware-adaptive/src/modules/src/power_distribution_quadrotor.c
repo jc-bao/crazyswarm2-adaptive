@@ -35,9 +35,9 @@
 #include "math.h"
 
 #ifndef CONFIG_MOTORS_DEFAULT_IDLE_THRUST
-#  define DEFAULT_IDLE_THRUST 0
+#define DEFAULT_IDLE_THRUST 0
 #else
-#  define DEFAULT_IDLE_THRUST CONFIG_MOTORS_DEFAULT_IDLE_THRUST
+#define DEFAULT_IDLE_THRUST CONFIG_MOTORS_DEFAULT_IDLE_THRUST
 #endif
 
 static uint32_t idleThrust = DEFAULT_IDLE_THRUST;
@@ -49,6 +49,16 @@ static float thrustToTorque = 0.005964552f;
 // static float pwmToThrustB = 0.067673604f;
 static float pwmToThrustA = 0.11459406f;
 static float pwmToThrustB = 0.02580751f;
+
+// variable to log here
+static float cmd_pwm1 = 0.0f;
+static float cmd_pwm2 = 0.0f;
+static float cmd_pwm3 = 0.0f;
+static float cmd_pwm4 = 0.0f;
+static float cmd_f1 = 0.0f;
+static float cmd_f2 = 0.0f;
+static float cmd_f3 = 0.0f;
+static float cmd_f4 = 0.0f;
 
 int powerDistributionMotorType(uint32_t id)
 {
@@ -70,15 +80,17 @@ bool powerDistributionTest(void)
   return pass;
 }
 
-static uint16_t capMinThrust(float thrust, uint32_t minThrust) {
-  if (thrust < minThrust) {
+static uint16_t capMinThrust(float thrust, uint32_t minThrust)
+{
+  if (thrust < minThrust)
+  {
     return minThrust;
   }
 
   return thrust;
 }
 
-static void powerDistributionLegacy(const control_t *control, motors_thrust_uncapped_t* motorThrustUncapped)
+static void powerDistributionLegacy(const control_t *control, motors_thrust_uncapped_t *motorThrustUncapped)
 {
   int16_t r = control->roll / 2.0f;
   int16_t p = control->pitch / 2.0f;
@@ -87,9 +99,15 @@ static void powerDistributionLegacy(const control_t *control, motors_thrust_unca
   motorThrustUncapped->motors.m2 = control->thrust - r - p - control->yaw;
   motorThrustUncapped->motors.m3 = control->thrust + r - p + control->yaw;
   motorThrustUncapped->motors.m4 = control->thrust + r + p - control->yaw;
+
+  cmd_pwm1 = (float)motorThrustUncapped->motors.m1 / (float)UINT16_MAX;
+  cmd_pwm2 = (float)motorThrustUncapped->motors.m2 / (float)UINT16_MAX;
+  cmd_pwm3 = (float)motorThrustUncapped->motors.m3 / (float)UINT16_MAX;
+  cmd_pwm4 = (float)motorThrustUncapped->motors.m4 / (float)UINT16_MAX;
 }
 
-static void powerDistributionForceTorque(const control_t *control, motors_thrust_uncapped_t* motorThrustUncapped) {
+static void powerDistributionForceTorque(const control_t *control, motors_thrust_uncapped_t *motorThrustUncapped)
+{
   static float motorForces[STABILIZER_NR_OF_MOTORS];
 
   const float arm = 0.707106781f * armLength;
@@ -103,13 +121,37 @@ static void powerDistributionForceTorque(const control_t *control, motors_thrust
   motorForces[2] = thrustPart + rollPart + pitchPart - yawPart;
   motorForces[3] = thrustPart + rollPart - pitchPart + yawPart;
 
-  for (int motorIndex = 0; motorIndex < STABILIZER_NR_OF_MOTORS; motorIndex++) {
+  for (int motorIndex = 0; motorIndex < STABILIZER_NR_OF_MOTORS; motorIndex++)
+  {
     float motorForce = motorForces[motorIndex];
-    if (motorForce < 0.0f) {
+    if (motorForce < 0.0f)
+    {
       motorForce = 0.0f;
     }
 
     float motor_pwm = (-pwmToThrustB + sqrtf(pwmToThrustB * pwmToThrustB + 4.0f * pwmToThrustA * motorForce)) / (2.0f * pwmToThrustA);
+
+    // add to log here
+    switch (motorIndex)
+    {
+    case 0:
+      cmd_pwm1 = motor_pwm;
+      cmd_f1 = motorForce;
+      break;
+    case 1:
+      cmd_pwm2 = motor_pwm;
+      cmd_f2 = motorForce;
+      break;
+    case 2:
+      cmd_pwm3 = motor_pwm;
+      cmd_f3 = motorForce;
+      break;
+    case 3:
+      cmd_pwm4 = motor_pwm;
+      cmd_f4 = motorForce;
+      break;
+    }
+
     motorThrustUncapped->list[motorIndex] = motor_pwm * UINT16_MAX;
   }
 }
@@ -142,25 +184,26 @@ static void powerDistributionForce(const control_t *control, motors_thrust_uncap
   }
 }
 
-void powerDistribution(const control_t *control, motors_thrust_uncapped_t* motorThrustUncapped)
+void powerDistribution(const control_t *control, motors_thrust_uncapped_t *motorThrustUncapped)
 {
-  switch (control->controlMode) {
-    case controlModeLegacy:
-      powerDistributionLegacy(control, motorThrustUncapped);
-      break;
-    case controlModeForceTorque:
-      powerDistributionForceTorque(control, motorThrustUncapped);
-      break;
-    case controlModeForce:
-      powerDistributionForce(control, motorThrustUncapped);
-      break;
-    default:
-      // Nothing here
-      break;
+  switch (control->controlMode)
+  {
+  case controlModeLegacy:
+    powerDistributionLegacy(control, motorThrustUncapped);
+    break;
+  case controlModeForceTorque:
+    powerDistributionForceTorque(control, motorThrustUncapped);
+    break;
+  case controlModeForce:
+    powerDistributionForce(control, motorThrustUncapped);
+    break;
+  default:
+    // Nothing here
+    break;
   }
 }
 
-void powerDistributionCap(const motors_thrust_uncapped_t* motorThrustBatCompUncapped, motors_thrust_pwm_t* motorPwm)
+void powerDistributionCap(const motors_thrust_uncapped_t *motorThrustBatCompUncapped, motors_thrust_pwm_t *motorPwm)
 {
   const int32_t maxAllowedThrust = UINT16_MAX;
 
@@ -187,6 +230,16 @@ void powerDistributionCap(const motors_thrust_uncapped_t* motorThrustBatCompUnca
     motorPwm->list[motorIndex] = capMinThrust(thrustCappedUpper, idleThrust);
   }
 }
+
+/**
+ * power distribution parameters
+ */
+LOG_GROUP_START(power)
+LOG_ADD(LOG_FLOAT, cmd_pwm1, &cmd_pwm1)
+LOG_ADD(LOG_FLOAT, cmd_pwm2, &cmd_pwm2)
+LOG_ADD(LOG_FLOAT, cmd_pwm3, &cmd_pwm3)
+LOG_ADD(LOG_FLOAT, cmd_pwm4, &cmd_pwm4)
+LOG_GROUP_STOP(power)
 
 /**
  * Power distribution parameters

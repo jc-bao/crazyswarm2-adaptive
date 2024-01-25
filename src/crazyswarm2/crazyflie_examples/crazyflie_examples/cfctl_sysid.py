@@ -288,6 +288,14 @@ def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
         pos_task = np.ones((int(t_task / dt), 3)) * target_pos
         vel_task = np.zeros_like(pos_task)
         acc_task = np.zeros_like(pos_task)
+    elif mode == "jump":
+        total_points = int(t_task / dt)
+        points_per_move = total_points // 4
+        p1 = np.ones((points_per_move, 3)) * np.array([0.0, 0.0, 0.6])
+        p2 = np.ones((points_per_move, 3)) * np.array([0.0, 0.0, 0.0])
+        pos_task = np.concatenate([p1, p2, p1, p2], axis=0)
+        vel_task = np.zeros_like(pos_task)
+        acc_task = np.zeros_like(pos_task)
     elif mode == "x" or mode == "y" or mode == "xy" or mode == "yx":
         if mode == "x":
             points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
@@ -736,7 +744,7 @@ class Crazyflie:
         pos, quat = self.get_drone_state()
         self.pos_hist[-1] = pos
         self.quat_hist[-1] = quat
-        self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(pos, self.dt, mode="o_zx")
+        self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(pos, self.dt, mode="jump")
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
