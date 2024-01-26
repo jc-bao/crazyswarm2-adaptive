@@ -166,10 +166,15 @@ static void powerDistributionForce(const control_t *control, motors_thrust_uncap
   const float thrustPart = 0.25f * control->T; // N (per rotor)
   const float yawPart = 0.25f * control->tau_z / thrustToTorque;
 
-  motorForces[0] = thrustPart - rollPart - pitchPart - yawPart;
-  motorForces[1] = thrustPart - rollPart + pitchPart + yawPart;
-  motorForces[2] = thrustPart + rollPart + pitchPart - yawPart;
-  motorForces[3] = thrustPart + rollPart - pitchPart + yawPart;
+//   motorForces[0] = thrustPart - rollPart - pitchPart - yawPart;
+//   motorForces[1] = thrustPart - rollPart + pitchPart + yawPart;
+//   motorForces[2] = thrustPart + rollPart + pitchPart - yawPart;
+//   motorForces[3] = thrustPart + rollPart - pitchPart + yawPart;
+
+  motorForces[0] = thrustPart - rollPart + pitchPart + yawPart;
+  motorForces[1] = thrustPart - rollPart - pitchPart - yawPart;
+  motorForces[2] = thrustPart + rollPart - pitchPart + yawPart;
+  motorForces[3] = thrustPart + rollPart + pitchPart - yawPart;
 
   for (int motorIndex = 0; motorIndex < STABILIZER_NR_OF_MOTORS; motorIndex++) {
     float motorForce = motorForces[motorIndex];

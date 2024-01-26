@@ -47,6 +47,9 @@ static float d_error_wz = 0.0;
 static float prev_p_error_wx = 0.0;
 static float prev_p_error_wy = 0.0;
 static float prev_p_error_wz = 0.0;
+static float prev_d_error_wx = 0.0;
+static float prev_d_error_wy = 0.0;
+static float prev_d_error_wz = 0.0;
 
 // PID output
 static float torquex_des = 0.0;
@@ -73,6 +76,9 @@ void controllerINDIReset(void)
   prev_p_error_wx = 0;
   prev_p_error_wy = 0;
   prev_p_error_wz = 0;
+  prev_d_error_wx = 0;
+  prev_d_error_wy = 0;
+  prev_d_error_wz = 0;
 }
 
 void controllerINDIInit(void)
@@ -106,9 +112,9 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   wz_des = radians(setpoint->attitudeRate.yaw);
   az_des = setpoint->acceleration.z;
   // NOTE: gyro observation might be noisy, need to check
-  float wx = radians(sensors->gyro.x);
-  float wy = -radians(sensors->gyro.y);
-  float wz = radians(sensors->gyro.z);
+  wx = radians(sensors->gyro.x);
+  wy = -radians(sensors->gyro.y);
+  wz = radians(sensors->gyro.z);
   // NOTE: acc_z's unit is Gs, need to convert to m/s^2, and acc_z does not include gravity
   // NOTE: need to check az frame
   float az = state->acc.z * 9.81f - 9.81f;
@@ -128,13 +134,21 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   i_error_accz += p_error_accz * dt;
   i_error_accz = clamp(i_error_accz, -i_range_accz, i_range_accz);
 
-  d_error_wx = (p_error_wx - prev_p_error_wx) / dt;
-  d_error_wy = (p_error_wy - prev_p_error_wy) / dt;
-  d_error_wz = (p_error_wz - prev_p_error_wz) / dt;
+  float new_d_error_wx = (p_error_wx - prev_p_error_wx) / dt;
+  float new_d_error_wy = (p_error_wy - prev_p_error_wy) / dt;
+  float new_d_error_wz = (p_error_wz - prev_p_error_wz) / dt;
+
+  // go through low pass filter
+  d_error_wx = 0.05f * new_d_error_wx + 0.95f * prev_d_error_wx;
+  d_error_wy = 0.05f * new_d_error_wy + 0.95f * prev_d_error_wy;
+  d_error_wz = 0.05f * new_d_error_wz + 0.95f * prev_d_error_wz;
 
   prev_p_error_wx = p_error_wx;
   prev_p_error_wy = p_error_wy;
   prev_p_error_wz = p_error_wz;
+  prev_d_error_wx = d_error_wx;
+  prev_d_error_wy = d_error_wy;
+  prev_d_error_wz = d_error_wz;
 
   float alphax_des = kp_wxy * p_error_wx + kd_wxy * d_error_wx + ki_wxy * i_error_wx;
   float alphay_des = kp_wxy * p_error_wy + kd_wxy * d_error_wy + ki_wxy * i_error_wy;

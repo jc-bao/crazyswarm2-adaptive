@@ -989,7 +989,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
 
         # empty running controller
         print("empty running controller ... ")
-        env.cf.setParam("usd.logging", 1)
+        # env.cf.setParam("usd.logging", 1)
         for _ in range(10):
             (
                 action_mppi,
@@ -1007,7 +1007,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
                 action_applied
             )
         env.timestep = 0
-        env.cf.setParam("usd.logging", 0)
+        # env.cf.setParam("usd.logging", 0)
         print("finish empty running controller ... ")
 
         total_steps = env.pos_traj.shape[0] - 1
@@ -1032,6 +1032,10 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
             
+            if timestep == int((0.0)*50):
+                env.cf.setParam("usd.logging", 1)
+            elif timestep == int((2.0) * 50):
+                env.cf.setParam("usd.logging", 0)
             # if timestep == int((4.0-0.1)*50):
             #     env.cf.setParam("usd.logging", 1)
             # elif timestep == int((4.0 + 2.0 + 0.1) * 50):
