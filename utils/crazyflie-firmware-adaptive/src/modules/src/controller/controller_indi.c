@@ -97,7 +97,8 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
                     const uint32_t tick)
 {
   // set to custom power distribution controller
-  control->controlMode = controlModeForce;
+//   control->controlMode = controlModeForce;
+  control->controlMode = controlModeLegacy;
 
   float dt;
   if (!RATE_DO_EXECUTE(ATTITUDE_RATE, tick))
@@ -169,14 +170,27 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   thrust_des = clamp(thrust_des, 0.0, 0.19);
 
   // Sending values to the motor
-  control->tau_x = torquex_des;
-  control->tau_x = torquey_des;
-  control->tau_x = torquez_des;
+  float arm = 0.046f * 0.707f;
+  float torquex_pwm = 0.25f / arm * torquex_des * 5.188f * 65535.0f;
+  float torquey_pwm = 0.25f / arm * torquey_des * 5.188f * 65535.0f;
+  float torquez_pwm = 0.25f / arm * torquez_des * 5.188f * 65535.0f;
+  float thrust_pwm = thrust_des * 5.188f * 65535.0f;
+  control->roll = torquex_pwm;
+  control->pitch = torquey_pwm;
+  control->yaw = torquez_pwm;
   if (setpoint->mode.z == modeDisable) {
-    control->T = setpoint->thrust;
+    control->thrust = setpoint->thrust;
   } else {
-    control->T = thrust_des;
+    control->thrust = thrust_pwm;
   }
+//   control->tau_x = torquex_des;
+//   control->tau_x = torquey_des;
+//   control->tau_x = torquez_des;
+//   if (setpoint->mode.z == modeDisable) {
+//     control->T = setpoint->thrust;
+//   } else {
+//     control->T = thrust_des;
+//   }
 }
 
 PARAM_GROUP_START(ctrlRwik)

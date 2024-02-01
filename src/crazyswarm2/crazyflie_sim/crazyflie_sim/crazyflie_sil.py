@@ -377,6 +377,7 @@ class CrazyflieSIL:
         self.state.velocity.z = state.vel[2]
 
         rpy = np.degrees(rowan.to_euler(state.quat, convention="xyz"))
+
         # Note, legacy coordinate system, so invert pitch
         self.state.attitude.roll = rpy[0]
         self.state.attitude.pitch = -rpy[1]
@@ -464,12 +465,12 @@ class CrazyflieSIL:
         ]
 
         # DEBUG: bypass powerDistributionCap
-        rpms = torque2rpm(
-            np.array(
-                [self.control.torqueX, self.control.torqueY, self.control.torqueZ]
-            ),
-            self.control.thrustSi,
-        )
+        # rpms = torque2rpm(
+        #     np.array(
+        #         [self.control.torqueX, self.control.torqueY, self.control.torqueZ]
+        #     ),
+        #     self.control.thrustSi,
+        # )
 
         action = sim_data_types.Action(rpms)
 
