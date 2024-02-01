@@ -873,10 +873,6 @@ class Crazyflie:
         else:
             next_time = (last_discrete_time + 1) * self.dt
         delta_time = next_time - self.last_control_time + 1e-6
-        print(f"last_discrete_time: {last_discrete_time}, discrete_time: {discrete_time}")
-        print(f"delta_time: {delta_time:.4f}")
-        # if delta_time > (self.dt + 1e-3):
-        #     print(f"WARNING: time difference is too large: {delta_time:.2f} s")
         frequncy = 1.0 / delta_time
         if frequncy < 49:
             print(f"frequncy: {frequncy:.2f} Hz")
@@ -989,28 +985,28 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             print("finish updating controller parameters for covo ... ")
         # exit()
 
-        # empty running controller
-        print("empty running controller ... ")
-        # env.cf.setParam("usd.logging", 1)
-        for _ in range(10):
-            (
-                action_mppi,
-                env.mppi_control_params,
-                mppi_control_info,
-            ) = env.mppi_controller(
-                None, state_real, env.env_params, None, env.mppi_control_params, None
-            )
-            t0 = time.time()
-            action_pid, env.control_params, control_info = env.controller(
-                None, state_real, env.env_params, None, env.control_params, None
-            )
-            action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_pid * 1e-8 + action_mppi * 1e-8
-            obs_real, state_real, reward_real, done_real, info_real = env.step(
-                action_applied
-            )
-        env.timestep = 0
-        # env.cf.setParam("usd.logging", 0)
-        print("finish empty running controller ... ")
+        # # empty running controller
+        # print("empty running controller ... ")
+        # # env.cf.setParam("usd.logging", 1)
+        # for _ in range(10):
+        #     (
+        #         action_mppi,
+        #         env.mppi_control_params,
+        #         mppi_control_info,
+        #     ) = env.mppi_controller(
+        #         None, state_real, env.env_params, None, env.mppi_control_params, None
+        #     )
+        #     t0 = time.time()
+        #     action_pid, env.control_params, control_info = env.controller(
+        #         None, state_real, env.env_params, None, env.control_params, None
+        #     )
+        #     action_applied = np.array([-1.0, 0.0, 0.0, 0.0]) + action_pid * 1e-8 + action_mppi * 1e-8
+        #     obs_real, state_real, reward_real, done_real, info_real = env.step(
+        #         action_applied
+        #     )
+        # env.timestep = 0
+        # # env.cf.setParam("usd.logging", 0)
+        # print("finish empty running controller ... ")
 
         total_steps = env.pos_traj.shape[0] - 1
         for timestep in range(total_steps):

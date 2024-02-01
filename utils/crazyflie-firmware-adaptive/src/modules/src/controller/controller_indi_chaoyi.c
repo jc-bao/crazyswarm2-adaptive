@@ -14,18 +14,18 @@ NOTEs: the unit use here
 */
 
 // Dynamic parameters
-static float m = CF_MASS;
-static float massThrust = 132000;                                 // emperical value for hovering.
+static float m = 0.0411;
+static float massThrust = 85000;                                 // emperical value for hovering.
 
 // PID parameters
-static float kp_wxy = 2000.0;
-static float kd_wxy = 20.0;
+static float kp_wxy = 750.0;
+static float kd_wxy = 8.0;
 static float ki_wxy = 500.0;
 static float i_range_wxy = 1.0;
 
-static float kp_wz = 1200.0;
-static float kd_wz = 12.0;
-static float ki_wz = 1000;
+static float kp_wz = 400.0;
+static float kd_wz = 2.0;
+static float ki_wz = 200.0;
 static float i_range_wz = 1.0;
 
 static float kp_accz = 1.0;
@@ -47,6 +47,9 @@ static float d_error_wz = 0.0;
 static float prev_p_error_wx = 0.0;
 static float prev_p_error_wy = 0.0;
 static float prev_p_error_wz = 0.0;
+static float prev_d_error_wx = 0.0;
+static float prev_d_error_wy = 0.0;
+static float prev_d_error_wz = 0.0;
 
 // PID output
 static float torquex_des = 0.0;
@@ -73,6 +76,9 @@ void controllerINDIReset(void)
   prev_p_error_wx = 0;
   prev_p_error_wy = 0;
   prev_p_error_wz = 0;
+  prev_d_error_wx = 0;
+  prev_d_error_wy = 0;
+  prev_d_error_wz = 0;
 }
 
 void controllerINDIInit(void)
@@ -92,6 +98,7 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
 {
   // set to custom power distribution controller
   control->controlMode = controlModeForce;
+//   control->controlMode = controlModeForceTorque;
 
   float dt;
   if (!RATE_DO_EXECUTE(ATTITUDE_RATE, tick))
@@ -106,12 +113,12 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   wz_des = radians(setpoint->attitudeRate.yaw);
   az_des = setpoint->acceleration.z;
   // NOTE: gyro observation might be noisy, need to check
-  float wx = radians(sensors->gyro.x);
-  float wy = -radians(sensors->gyro.y);
-  float wz = radians(sensors->gyro.z);
-  // NOTE: acc_z's unit is Gs, need to convert to m/s^2
+  wx = radians(sensors->gyro.x);
+  wy = -radians(sensors->gyro.y);
+  wz = radians(sensors->gyro.z);
+  // NOTE: acc_z's unit is Gs, need to convert to m/s^2, and acc_z does not include gravity
   // NOTE: need to check az frame
-  float az = state->acc.z * 9.81f;
+  float az = state->acc.z * 9.81f - 9.81f;
 
   // PID controller
   p_error_wx = wx_des - wx;
@@ -128,13 +135,21 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   i_error_accz += p_error_accz * dt;
   i_error_accz = clamp(i_error_accz, -i_range_accz, i_range_accz);
 
-  d_error_wx = (p_error_wx - prev_p_error_wx) / dt;
-  d_error_wy = (p_error_wy - prev_p_error_wy) / dt;
-  d_error_wz = (p_error_wz - prev_p_error_wz) / dt;
+  float new_d_error_wx = (p_error_wx - prev_p_error_wx) / dt;
+  float new_d_error_wy = (p_error_wy - prev_p_error_wy) / dt;
+  float new_d_error_wz = (p_error_wz - prev_p_error_wz) / dt;
+
+  // go through low pass filter
+  d_error_wx = 0.05f * new_d_error_wx + 0.95f * prev_d_error_wx;
+  d_error_wy = 0.05f * new_d_error_wy + 0.95f * prev_d_error_wy;
+  d_error_wz = 0.05f * new_d_error_wz + 0.95f * prev_d_error_wz;
 
   prev_p_error_wx = p_error_wx;
   prev_p_error_wy = p_error_wy;
   prev_p_error_wz = p_error_wz;
+  prev_d_error_wx = d_error_wx;
+  prev_d_error_wy = d_error_wy;
+  prev_d_error_wz = d_error_wz;
 
   float alphax_des = kp_wxy * p_error_wx + kd_wxy * d_error_wx + ki_wxy * i_error_wx;
   float alphay_des = kp_wxy * p_error_wy + kd_wxy * d_error_wy + ki_wxy * i_error_wy;
@@ -143,17 +158,39 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
 
   // convert into torque and thrust
   struct vec I = {16.571710e-6, 16.571710e-6, 29.261652e-6}; // moment of inertia
+  // single motor thrust limit = 0.19N, max torque = 1e-2 N.m
   // torque = I * alpha + w x I * w
   torquex_des = alphax_des * I.x + wx * (wy * I.z - wz * I.y);
   torquey_des = alphay_des * I.y + wy * (wz * I.x - wx * I.z);
   torquez_des = alphaz_des * I.z + wz * (wx * I.y - wy * I.x);
   thrust_des = m * az_thrust_des;
+  torquex_des = clamp(torquex_des, -1e-2, 1e-2);
+  torquey_des = clamp(torquey_des, -1e-2, 1e-2);
+  torquez_des = clamp(torquez_des, -1e-2, 1e-2);
+  thrust_des = clamp(thrust_des, 0.0, 0.19);
 
   // Sending values to the motor
-  control->torqueX = torquex_des;
-  control->torqueY = torquey_des;
-  control->torqueZ = torquez_des;
-  control->thrust = thrust_des;
+//   float arm = 0.046f * 0.707f;
+//   float torquex_pwm = 0.25f / arm * torquex_des * 5.188f * 65535.0f;
+//   float torquey_pwm = 0.25f / arm * torquey_des * 5.188f * 65535.0f;
+//   float torquez_pwm = 0.25f / arm * torquez_des * 5.188f * 65535.0f;
+//   float thrust_pwm = thrust_des * 5.188f * 65535.0f;
+//   control->roll = torquex_pwm;
+//   control->pitch = torquey_pwm;
+//   control->yaw = torquez_pwm;
+//   if (setpoint->mode.z == modeDisable) {
+//     control->thrust = setpoint->thrust;
+//   } else {
+//     control->thrust = thrust_pwm;
+//   }
+  control->tau_x = torquex_des;
+  control->tau_y = torquey_des;
+  control->tau_z = torquez_des;
+  if (setpoint->mode.z == modeDisable) {
+    control->T = setpoint->thrust;
+  } else {
+    control->T = thrust_des;
+  }
 }
 
 PARAM_GROUP_START(ctrlRwik)
