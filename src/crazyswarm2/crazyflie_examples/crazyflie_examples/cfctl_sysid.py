@@ -660,7 +660,7 @@ class Crazyflie:
         self.adapt_horizon = 10
 
         # real-world parameters
-        self.world_center = np.array([0.0, 0.0, 1.0])
+        self.world_center = np.array([0.0, 0.0, 1.5])
         self.xyz_min = np.array([-3.0, -3.0, -3.0])
         self.xyz_max = np.array([3.0, 3.0, 2.0])
 
@@ -744,7 +744,7 @@ class Crazyflie:
         pos, quat = self.get_drone_state()
         self.pos_hist[-1] = pos
         self.quat_hist[-1] = quat
-        self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(pos, self.dt, mode="0")
+        self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(pos, self.dt, mode="x")
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.state_real.pos_traj))
@@ -959,6 +959,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
     env = Crazyflie(enable_logging=enable_logging, mode=mode)
 
     try:
+        env.cf.setParam("usd.logging", 0)
         state_real = env.state_real
 
         # update controller parameters for CoVO controller only
@@ -1030,9 +1031,9 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
             
-            if timestep == int((1.0)*50):
+            if timestep == int((4.0-0.1)*50):
                 env.cf.setParam("usd.logging", 1)
-            elif timestep == int((2.0) * 50):
+            elif timestep == int((6.0+0.1) * 50):
                 env.cf.setParam("usd.logging", 0)
             # if timestep == int((4.0-0.1)*50):
             #     env.cf.setParam("usd.logging", 1)
@@ -1090,6 +1091,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
     except KeyboardInterrupt:
         pass
     finally:
+        env.cf.setParam("usd.logging", 0)
         data = env.log
         start_step = 6 * 50
         end_step = (6 + 18) * 50
