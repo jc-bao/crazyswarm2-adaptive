@@ -29,7 +29,7 @@ static float ki_wz = 200.0;
 static float i_range_wz = 1.0;
 
 static float kp_accz = 1.0;
-static float ki_accz = 0.1;
+static float ki_accz = 0.2;
 static float i_range_accz = 0.2;
 
 // PID intermediate variables
@@ -119,7 +119,7 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   wz = radians(sensors->gyro.z);
   // NOTE: acc_z's unit is Gs, need to convert to m/s^2, and acc_z does not include gravity
   // NOTE: need to check az frame
-  float az = state->acc.z * 9.81f - 9.81f;
+  az = (sensors->acc.z) * 9.81f;
 
   // PID controller
   p_error_wx = wx_des - wx;
@@ -156,7 +156,7 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   float alphax_des = kp_wxy * p_error_wx + kd_wxy * d_error_wx + ki_wxy * i_error_wx;
   float alphay_des = kp_wxy * p_error_wy + kd_wxy * d_error_wy + ki_wxy * i_error_wy;
   float alphaz_des = kp_wz * p_error_wz + kd_wz * d_error_wz + ki_wz * i_error_wz;
-  float az_thrust_des = kp_accz * p_error_accz + ki_accz * i_error_accz;
+  float az_thrust_des = kp_accz * p_error_accz + ki_accz * i_error_accz + 9.81f;
 
   // convert into torque and thrust
   struct vec I = {16.571710e-6, 16.571710e-6, 29.261652e-6}; // moment of inertia
@@ -176,8 +176,8 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
   float torquex_pwm = 0.25f / arm * torquex_des * 5.188f * 65535.0f;
   float torquey_pwm = 0.25f / arm * torquey_des * 5.188f * 65535.0f;
   float torquez_pwm = 0.25f * torquez_des / 0.005964552f * 65535.0f;
-  // float thrust_pwm = thrust_des * 5.188f * 65535.0f;
-  float thrust_pwm = 0.041f * (setpoint->acceleration.z) * massThrust; 
+  float thrust_pwm = 0.25f * thrust_des * 5.188f * 65535.0f;
+  // float thrust_pwm = 0.041f * (setpoint->acceleration.z) * massThrust; 
   control->roll = clamp(torquex_pwm, -32000, 32000);
   control->pitch = clamp(torquey_pwm, -32000, 32000);
   control->yaw = clamp(-torquez_pwm, -32000, 32000);

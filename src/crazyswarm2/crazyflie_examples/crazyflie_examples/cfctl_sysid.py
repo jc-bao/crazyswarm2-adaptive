@@ -962,27 +962,27 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
         state_real = env.state_real
 
         # update controller parameters for CoVO controller only
-        if isinstance(env.mppi_controller, CoVOController):
-            print("update controller parameters for covo ... ")
-            state_dict = state_real.__dict__
-            state_dict_jax = {}
-            for k, v in state_dict.items():
-                state_dict_jax[k] = jnp.array(v)
-            state_dict_jax["control_params"] = env.mppi_control_params
-            state_jax = EnvState3DJax(**state_dict_jax)
-            env.mppi_control_params = env.mppi_controller.reset(
-                state_jax,
-                env.mppi_controller.env_params,
-                env.mppi_control_params,
-                jax.random.PRNGKey(0),
-            )
-            # save mppi_control_params
-            with open(
-                "/home/pcy/Research/code/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/results/covo_cov.pkl",
-                "wb",
-            ) as f:
-                pickle.dump(env.mppi_control_params.a_cov_offline, f)
-            print("finish updating controller parameters for covo ... ")
+        # if isinstance(env.mppi_controller, CoVOController):
+        #     print("update controller parameters for covo ... ")
+        #     state_dict = state_real.__dict__
+        #     state_dict_jax = {}
+        #     for k, v in state_dict.items():
+        #         state_dict_jax[k] = jnp.array(v)
+        #     state_dict_jax["control_params"] = env.mppi_control_params
+        #     state_jax = EnvState3DJax(**state_dict_jax)
+        #     env.mppi_control_params = env.mppi_controller.reset(
+        #         state_jax,
+        #         env.mppi_controller.env_params,
+        #         env.mppi_control_params,
+        #         jax.random.PRNGKey(0),
+        #     )
+        #     # save mppi_control_params
+        #     with open(
+        #         "/home/pcy/Research/code/crazyswarm2-adaptive/src/crazyswarm2/crazyflie_examples/crazyflie_examples/results/covo_cov.pkl",
+        #         "wb",
+        #     ) as f:
+        #         pickle.dump(env.mppi_control_params.a_cov_offline, f)
+        #     print("finish updating controller parameters for covo ... ")
         # exit()
 
         # # empty running controller
@@ -1030,10 +1030,10 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
             
-            # if timestep == int((0.0)*50):
-            #     env.cf.setParam("usd.logging", 1)
-            # elif timestep == int((2.0) * 50):
-            #     env.cf.setParam("usd.logging", 0)
+            if timestep == int((1.0)*50):
+                env.cf.setParam("usd.logging", 1)
+            elif timestep == int((2.0) * 50):
+                env.cf.setParam("usd.logging", 0)
             # if timestep == int((4.0-0.1)*50):
             #     env.cf.setParam("usd.logging", 1)
             # elif timestep == int((4.0 + 2.0 + 0.1) * 50):
@@ -1090,7 +1090,6 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
     except KeyboardInterrupt:
         pass
     finally:
-        # env.cf.setParam("usd.logging", 0)
         data = env.log
         start_step = 6 * 50
         end_step = (6 + 18) * 50
