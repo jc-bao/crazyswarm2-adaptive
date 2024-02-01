@@ -431,6 +431,17 @@ class CrazyflieSIL:
         return groupMask == 0 or (self.groupMask & groupMask) > 0
 
     def _fwcontrol_to_sim_data_types_action(self):
+        """Convert the firmware control to a sim_data_types.Action (which is rpm)
+
+        For real robot: controller torque -> powerDistribution (PWM) -> battery compensation -> powerDistributionCap (PWM) -> motors_thrust_pwm
+
+        For simulator: action is the control command (might have different structure, for PID, it is thrust, roll pitch yaw in PWM. ) -> powerDistribution (PWM) -> powerDistributionCap (PWM) -> motors_thrust_pwm -> convert to RPM -> feed into simulator
+
+        Returns:
+            _type_: _description_
+        """
+
+
         firm.powerDistribution(self.control, self.motors_thrust_uncapped)
         firm.powerDistributionCap(self.motors_thrust_uncapped, self.motors_thrust_pwm)
 

@@ -97,8 +97,8 @@ void controllerINDI(control_t *control, const setpoint_t *setpoint,
                     const uint32_t tick)
 {
   // set to custom power distribution controller
-//   control->controlMode = controlModeForce;
-  control->controlMode = controlModeLegacy;
+  control->controlMode = controlModeForce;
+//   control->controlMode = controlModeForceTorque;
 
   float dt;
   if (!RATE_DO_EXECUTE(ATTITUDE_RATE, tick))

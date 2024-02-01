@@ -19,6 +19,7 @@ from crazyflie_interfaces.msg import Hover, FullState
 from std_srvs.srv import Empty
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseStamped
 
 from functools import partial
 
@@ -94,6 +95,7 @@ class CrazyflieServer(Node):
         self.create_service(StartTrajectory, "all/start_trajectory", self._start_trajectory_callback)
 
         self.odom_pub = {}
+        self.pose_pub = {}
         for name, _ in self.cfs.items():
             self.create_service(
                 Empty, name +
@@ -132,6 +134,9 @@ class CrazyflieServer(Node):
             )
             self.odom_pub[name] = self.create_publisher(
                 Odometry, name + "/odom", 10
+            )
+            self.pose_pub[name] = self.create_publisher(
+                PoseStamped, name + "/pose", 10
             )
 
         # step as fast as possible
@@ -186,6 +191,17 @@ class CrazyflieServer(Node):
         for state, (name, cf) in zip(states_next, self.cfs.items()):
             cf.setState(state)
             self.odom_pub[name].publish(self.getOdometry(name, state))
+            pose_msg = PoseStamped()
+            pose_msg.header.stamp = self.get_clock().now().to_msg()
+            pose_msg.header.frame_id = self.world_tf_name
+            pose_msg.pose.position.x = state.pos[0]
+            pose_msg.pose.position.y = state.pos[1]
+            pose_msg.pose.position.z = state.pos[2]
+            pose_msg.pose.orientation.x = state.quat[1]
+            pose_msg.pose.orientation.y = state.quat[2]
+            pose_msg.pose.orientation.z = state.quat[3]
+            pose_msg.pose.orientation.w = state.quat[0]
+            self.pose_pub[name].publish(pose_msg)
 
         for vis in self.visualizations:
             vis.step(self.backend.time(), states_next, states_desired, actions)

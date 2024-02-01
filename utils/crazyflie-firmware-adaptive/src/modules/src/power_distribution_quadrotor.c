@@ -19,7 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  * power_distribution_quadrotor.c - Crazyflie stock power distribution code
  */
@@ -184,7 +184,9 @@ static void powerDistributionForce(const control_t *control, motors_thrust_uncap
 
     // NOTE: here, I use simple linear model to convert force to pwm. need further identification
     // mass to pwm ratio = 85000, force=1.0/4 N, pwm=85000
-    float motor_pwm = motorForce * 5.188f; // / 0.25f * 85000.0f / 65535.0f; // range: 0 - 1.0
+    // float motor_pwm = motorForce * 5.188f; // / 0.25f * 85000.0f / 65535.0f; // range: 0 - 1.0
+
+    float motor_pwm = (-pwmToThrustB + sqrtf(pwmToThrustB * pwmToThrustB + 4.0f * pwmToThrustA * motorForce)) / (2.0f * pwmToThrustA);
 
     // add to log here
     switch (motorIndex)

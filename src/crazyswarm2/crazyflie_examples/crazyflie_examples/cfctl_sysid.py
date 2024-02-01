@@ -872,7 +872,9 @@ class Crazyflie:
             next_time = (discrete_time + 1) * self.dt
         else:
             next_time = (last_discrete_time + 1) * self.dt
-        delta_time = next_time - self.last_control_time
+        delta_time = next_time - self.last_control_time + 1e-6
+        print(f"last_discrete_time: {last_discrete_time}, discrete_time: {discrete_time}")
+        print(f"delta_time: {delta_time:.4f}")
         # if delta_time > (self.dt + 1e-3):
         #     print(f"WARNING: time difference is too large: {delta_time:.2f} s")
         frequncy = 1.0 / delta_time
@@ -1032,10 +1034,10 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             # action_pid[0] += 0.3*((timestep % 2) * 2.0 - 1.0)
             # action_pid[1:] += 0.1*((timestep % 2) * 2.0 - 1.0)
             
-            if timestep == int((0.0)*50):
-                env.cf.setParam("usd.logging", 1)
-            elif timestep == int((2.0) * 50):
-                env.cf.setParam("usd.logging", 0)
+            # if timestep == int((0.0)*50):
+            #     env.cf.setParam("usd.logging", 1)
+            # elif timestep == int((2.0) * 50):
+            #     env.cf.setParam("usd.logging", 0)
             # if timestep == int((4.0-0.1)*50):
             #     env.cf.setParam("usd.logging", 1)
             # elif timestep == int((4.0 + 2.0 + 0.1) * 50):
@@ -1092,7 +1094,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
     except KeyboardInterrupt:
         pass
     finally:
-        env.cf.setParam("usd.logging", 0)
+        # env.cf.setParam("usd.logging", 0)
         data = env.log
         start_step = 6 * 50
         end_step = (6 + 18) * 50
