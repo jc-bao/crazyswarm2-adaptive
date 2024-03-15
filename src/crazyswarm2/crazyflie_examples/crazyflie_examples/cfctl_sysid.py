@@ -1033,7 +1033,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             
             if timestep == int((4.0-0.1)*50):
                 env.cf.setParam("usd.logging", 1)
-            elif timestep == int((6.0+0.1) * 50):
+            elif timestep == int((10.0+0.1) * 50):
                 env.cf.setParam("usd.logging", 0)
             # if timestep == int((4.0-0.1)*50):
             #     env.cf.setParam("usd.logging", 1)
