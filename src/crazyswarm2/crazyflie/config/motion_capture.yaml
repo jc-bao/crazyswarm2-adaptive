@@ -1,10 +1,10 @@
 /motion_capture_tracking:
   ros__parameters:
-    # type: "vicon"
+    type: "vicon"
     # type: "vrpn"
-    type: "optitrack"
-    # hostname: "192.168.3.137"
-    hostname: "192.168.1.60"
+    # type: "optitrack"
+    hostname: "192.168.3.137"
+    # hostname: "192.168.1.60"
     # hostname: "192.168.1.39"
 
     mode: "libRigidBodyTracker" # one of motionCapture,libRigidBodyTracker

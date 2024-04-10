@@ -1,0 +1,5 @@
+03/27
+Kp: float = 6.0
+Kd: float = 4.0
+Ki: float = 0.0
+Kp_att: float = 3.0
