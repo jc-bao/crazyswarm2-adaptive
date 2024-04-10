@@ -2,48 +2,20 @@ import numpy as np
 import rclpy
 import pickle
 import os
+import time
 
 import doa
 
-from .utils import Crazyflie
+from .cf_env import Crazyflie, eval_tracking_performance
 
 
-
-
-def eval_tracking_performance(actual, reference):
-    # calculate tracking performance
-    # actual: np.array, shape (n, 2)
-    # reference: np.array, shape (n, 2)
-    # return: float, tracking performance
-    whole_ade = np.mean(np.linalg.norm(actual - reference, axis=1))
-    last_quarter_ade = np.mean(
-        np.linalg.norm(
-            actual[-int(len(actual) / 4) :] - reference[-int(len(reference) / 4) :],
-            axis=1,
-        )
-    )
-    max_error = np.max(np.linalg.norm(actual - reference, axis=1))
-    last_quarter_max_error = np.max(
-        np.linalg.norm(
-            actual[-int(len(actual) / 4) :] - reference[-int(len(reference) / 4) :],
-            axis=1,
-        )
-    )
-    mse = np.mean(np.linalg.norm(actual - reference, axis=1) ** 2)
-    rmse = np.sqrt(mse)
-    return {
-        "whole_ade": whole_ade,
-        "last_quarter_ade": last_quarter_ade,
-        "max_error": max_error,
-        "last_quarter_max_error": last_quarter_max_error,
-        "mse": mse,
-        "rmse": rmse,
-    }
-
-
-
-def main(enable_logging=True):  # mode  = mppi covo-online covo-offline nn
-    env = Crazyflie(enable_logging=enable_logging)
+def main(log_dir):
+    T_takeoff = 3.0
+    T_hover = 1.0
+    T_task = 20.0
+    mode = "figure8"
+    log_dir = os.path.join(log_dir, f"PD_{mode}_{time.strftime('%Y%m%d-%H%M%S')}")
+    env = Crazyflie(T_takeoff, T_hover, T_task, mode="figure8", log_folder=log_dir)
 
     # state: p, v, q, w
     config = doa.Controller_NN_Config(
@@ -60,12 +32,11 @@ def main(enable_logging=True):  # mode  = mppi covo-online covo-offline nn
     controller = doa.Controller_NN(config)
 
     try:
-        env.cf.setParam("usd.logging", 1)
         state_real = env.state_real
 
         total_steps = env.pos_traj.shape[0] - 1
-        takeoff_step = int(4.0 / env.dt)
-        landing_step = int(4.0 / env.dt)
+        takeoff_step = int((T_takeoff + T_hover) / env.dt)
+        landing_step = int((T_takeoff + T_hover) / env.dt)
         landing_step = total_steps - landing_step
         for timestep in range(total_steps):
 
@@ -98,20 +69,8 @@ def main(enable_logging=True):  # mode  = mppi covo-online covo-offline nn
     except KeyboardInterrupt:
         pass
     finally:
-        env.cf.setParam("usd.logging", 0)
-        if not os.path.exists(os.path.dirname(env.log_path)):
-            os.makedirs(os.path.dirname(env.log_path))
-        with open(env.log_path, "wb") as f:
-            pickle.dump(env.log, f)
-        print("log saved to", env.log_path)
+        log, metrics = env.dump_log()
         rclpy.shutdown()
-
-        log = env.log[400:]
-        metrics = eval_tracking_performance(
-            np.array([log[i]["p"] for i in range(len(log))]),
-            np.array([log[i]["ref_p"] for i in range(len(log))]),
-        )
-        print(metrics)
 
 
 if __name__ == "__main__":

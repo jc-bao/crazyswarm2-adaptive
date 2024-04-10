@@ -55,7 +55,7 @@ def random_bspline(dt, T, T_sample, start, max_speed, pos_max, pos_min):
 
     steps = int(T / dt)
     pos = bspline(key_points, n=steps, degree=5, periodic=False)
-    
+
     return traj_from_pos(pos, dt)
 
 
@@ -88,26 +88,33 @@ def bspline(cv, n=100, degree=3, periodic=False):
     return spl(np.linspace(0, max_param, n))
 
 
-def generate_traj(init_pos: np.array, dt: float, mode: str) -> np.ndarray:
+def generate_traj(
+    init_pos: np.array,
+    dt: float,
+    T_takeoff: float,
+    T_hover: float,
+    T_task: float,
+    mode: str,
+) -> np.ndarray:
     """
     generate a trajectory with max_steps steps
     """
 
     # generate take off trajectory
     target_pos = np.array([0.0, 0.0, 0.0])
-    t_takeoff = 3.0
+    t_takeoff = T_takeoff
     pos_takeoff, vel_takeoff, acc_takeoff = cos_interp(
         dt, t_takeoff, init_pos, target_pos
     )
 
     # stablize for 1.0 second
-    t_stablize = 1.0
+    t_stablize = T_hover
     pos_stablize, vel_stablize, acc_stablize = line(
         dt, t_stablize, target_pos, target_pos
     )
 
     # generate test trajectory
-    t_task = 20.0
+    t_task = T_task
 
     if mode == "figure8":
         # figure 8 trajectory
@@ -198,5 +205,3 @@ def test():
     plt.plot(acc)
     plt.title("acc")
     plt.show()
-
-

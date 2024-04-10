@@ -4,60 +4,13 @@ from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
 from dataclasses import dataclass
 import rclpy
+import os
+import pickle
+import json
 
 from crazyflie_py import Crazyswarm
 from .trajectory import generate_traj
-
-def hat(v: np.ndarray) -> np.ndarray:
-    return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-
-
-def L(q: np.ndarray) -> np.ndarray:
-    """
-    L(q) = [sI + hat(v), v; -v^T, s]
-    left multiplication matrix of a quaternion
-    """
-    s = q[3]
-    v = q[:3]
-    right = np.hstack((v, s)).reshape(-1, 1)
-    left_up = s * np.eye(3) + hat(v)
-    left_down = -v
-    left = np.vstack((left_up, left_down))
-    return np.hstack((left, right))
-
-
-def vee(R: np.ndarray):
-    return np.array([R[2, 1], R[0, 2], R[1, 0]])
-
-
-def qtoQ(q: np.ndarray) -> np.ndarray:
-    """
-    covert a quaternion to a 3x3 rotation matrix
-    """
-    T = np.diag(np.array([-1, -1, -1, 1]))
-    H = np.vstack((np.eye(3), np.zeros((1, 3))))
-    Lq = L(q)
-    return H.T @ T @ Lq @ T @ Lq @ H
-
-
-def Qtoq(Q: np.ndarray) -> np.ndarray:
-    q = np.zeros(4)
-    q[3] = 0.5 * np.sqrt(1 + Q[0, 0] + Q[1, 1] + Q[2, 2])
-    q[:3] = (
-        0.5
-        / np.sqrt(1 + Q[0, 0] + Q[1, 1] + Q[2, 2])
-        * np.array([Q[2, 1] - Q[1, 2], Q[0, 2] - Q[2, 0], Q[1, 0] - Q[0, 1]])
-    )
-    return q
-
-
-def axisangletoR(axis: np.ndarray, angle: float) -> np.ndarray:
-    axis = axis / np.linalg.norm(axis)
-    return (
-        np.eye(3)
-        + np.sin(angle) * hat(axis)
-        + (1 - np.cos(angle)) * hat(axis) @ hat(axis)
-    )
+from .pid import PIDController, PIDParams
 
 
 @dataclass
@@ -102,81 +55,6 @@ class EnvParams3D:
     adapt_horizon: int = 2
 
 
-@dataclass
-class PIDParams:
-    Kp: float = 6.0
-    Kd: float = 4.0
-    Ki: float = 0.0
-    Kp_att: float = 3.0
-
-    integral: np.ndarray = np.array([0.0, 0.0, 0.0])
-    quat_desired: np.ndarray = np.array([0.0, 0.0, 0.0, 1.0])
-
-
-class PIDController:
-    def __init__(self, env_params: EnvParams3D, control_params: PIDParams) -> None:
-        self.param = env_params
-
-    def __call__(
-        self,
-        state,
-        control_params: PIDParams,
-    ) -> np.ndarray:
-
-        ep = state.pos - state.pos_tar
-        ev = state.vel - state.vel_tar
-        err = ep + ev
-
-        # position control
-        Q = qtoQ(state.quat)
-        f_d = self.param.m * (
-            np.array([0.0, 0.0, self.param.g])
-            - control_params.Kp * (state.pos - state.pos_tar)
-            - control_params.Kd * (state.vel - state.vel_tar)
-            - control_params.Ki * control_params.integral
-            + state.acc_tar
-        )
-        thrust = (Q.T @ f_d)[2]
-        thrust = np.clip(thrust, 0.0, self.param.max_thrust)
-
-        # attitude control
-        z_d = f_d / np.linalg.norm(f_d)
-        axis_angle = np.cross(np.array([0.0, 0.0, 1.0]), z_d)
-        angle = np.linalg.norm(axis_angle)
-        small_angle = np.abs(angle) < 1e-4
-        axis = np.where(small_angle, np.array([0.0, 0.0, 1.0]), axis_angle / angle)
-        R_d = axisangletoR(axis, angle)
-        quat_desired = Qtoq(R_d)
-        R_e = R_d.T @ Q
-        angle_err = vee(R_e - R_e.T)
-
-        # generate desired angular velocity
-        omega_d = -control_params.Kp_att * angle_err
-
-        # generate action
-        action = np.concatenate(
-            [
-                np.array([(thrust / self.param.max_thrust) * 2.0 - 1.0]),
-                (omega_d / self.param.max_omega),
-            ]
-        )
-
-        # update control_params
-        # integral = control_params.integral + (state.pos - state.pos_tar) * self.param.dt
-
-        # control_params.integral = integral
-        control_params.quat_desired = quat_desired
-
-        return (
-            err,
-            action,
-            control_params,
-            {"ref_omega": omega_d, "ref_q": quat_desired, "thrust": thrust},
-        )
-
-
-
-
 def multiple_quat(quat1: np.ndarray, quat2: np.ndarray) -> np.ndarray:
     """Multiply two quaternions (x, y, z, w)."""
     v1 = quat1[..., :3]
@@ -191,8 +69,17 @@ def multiple_quat(quat1: np.ndarray, quat2: np.ndarray) -> np.ndarray:
 class Crazyflie:
     def __init__(
         self,
-        enable_logging=True,
+        T_takeoff,
+        T_hover,
+        T_task,
+        mode,
+        log_folder,
     ) -> None:
+
+        self.T_takeoff = T_takeoff
+        self.T_hover = T_hover
+        self.T_task = T_task
+
         # control parameters
         self.timestep = 0
         self.dt = 0.02
@@ -208,7 +95,13 @@ class Crazyflie:
 
         # base controller: PID
         self.control_params = PIDParams()
-        self.controller = PIDController(self.env_params, self.control_params)
+        self.controller = PIDController(
+            self.control_params,
+            self.env_params.m,
+            self.env_params.g,
+            self.env_params.max_thrust,
+            self.env_params.max_omega,
+        )
 
         # ROS related initialization
         self.pos_kf = np.zeros(3)
@@ -226,6 +119,7 @@ class Crazyflie:
         self.swarm = Crazyswarm()
         self.timeHelper = self.swarm.timeHelper
         self.cf = self.swarm.allcfs.crazyflies[0]
+
         # publisher
         rate = int(1.0 / self.env_params.dt)
         self.pos_real_pub = self.swarm.allcfs.create_publisher(
@@ -245,10 +139,8 @@ class Crazyflie:
         )
 
         # logging
-        self.enable_logging = enable_logging
-        if enable_logging:
-            self.log_path = "/home/guanqi/Documents/Lecar/DOA_crazyswarm/crazyswarm2-adaptive/cflog/cfctl.pkl"
-            self.log = []
+        self.log_folder = log_folder
+        self.log = []
 
         # establish connection
         # NOTE use this to estabilish connection
@@ -264,12 +156,14 @@ class Crazyflie:
         self.pos_hist[-1] = pos
         self.quat_hist[-1] = quat
         self.pos_traj, self.vel_traj, self.acc_traj = generate_traj(
-            pos, self.dt, mode="0"
+            pos, self.dt, T_takeoff, T_hover, T_task, mode=mode
         )
         self.state_real = self.get_real_state()
         # publish trajectory
         self.traj_pub.publish(self.get_path_msg(self.pos_traj))
         self.last_control_time = self.timeHelper.time()
+
+        self.cf.setParam("usd.logging", 1)
 
     def state_callback_cf(self, data):
         """
@@ -446,5 +340,54 @@ class Crazyflie:
             self.get_pose_msg(self.state_real.pos_tar, np.array([0.0, 0.0, 0.0, 1, 0]))
         )
 
+    def dump_log(self):
+        begin = int((self.T_takeoff + self.T_hover) / self.dt)
+        log = self.log[begin:-begin]
+        self.cf.setParam("usd.logging", 0)
+        if not os.path.exists(self.log_folder):
+            os.makedirs(self.log_folder)
+        log_path = os.path.join(self.log_folder, "log.pkl")
+        with open(self.log_path, "wb") as f:
+            pickle.dump(log, f)
+        print("log saved to", self.log_path)
+        metrics_path = os.path.join(self.log_folder, "metrics.json")
+        metrics = eval_tracking_performance(
+            np.array([log[i]["p"] for i in range(len(log))]),
+            np.array([log[i]["ref_p"] for i in range(len(log))]),
+        )
+        print("metrics:", metrics)
+        print("metrics saved to", metrics_path)
+        with open(metrics_path, "w") as f:
+            json.dump(metrics, f)
+        return log, metrics
 
 
+def eval_tracking_performance(actual, reference):
+    # calculate tracking performance
+    # actual: np.array, shape (n, 2)
+    # reference: np.array, shape (n, 2)
+    # return: float, tracking performance
+    whole_ade = np.mean(np.linalg.norm(actual - reference, axis=1))
+    last_quarter_ade = np.mean(
+        np.linalg.norm(
+            actual[-int(len(actual) / 4) :] - reference[-int(len(reference) / 4) :],
+            axis=1,
+        )
+    )
+    max_error = np.max(np.linalg.norm(actual - reference, axis=1))
+    last_quarter_max_error = np.max(
+        np.linalg.norm(
+            actual[-int(len(actual) / 4) :] - reference[-int(len(reference) / 4) :],
+            axis=1,
+        )
+    )
+    mse = np.mean(np.linalg.norm(actual - reference, axis=1) ** 2)
+    rmse = np.sqrt(mse)
+    return {
+        "whole_ade": whole_ade,
+        "last_quarter_ade": last_quarter_ade,
+        "max_error": max_error,
+        "last_quarter_max_error": last_quarter_max_error,
+        "mse": mse,
+        "rmse": rmse,
+    }
