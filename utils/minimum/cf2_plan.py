@@ -27,7 +27,7 @@ class CF2Plan(Node):
         self.t = 0.0
         self.ctrl_dt = 0.02
         # set up planner
-        self.env = GR1Env()
+        self.env = CF2Env()
         args = Args()
         self.mbdpi = MBDPI(args, self.env)
         self.rng = jax.random.PRNGKey(0)

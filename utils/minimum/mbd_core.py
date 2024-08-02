@@ -33,11 +33,11 @@ class Args:
     # env
     env_name: str = "cf2"
     # diffusion
-    Nsample: int = 4096  # number of samples
-    Hsample: int = 50  # horizon of samples
-    Hnode: int = 25  # node number for control
+    Nsample: int = 2048  # number of samples
+    Hsample: int = 32  # horizon of samples
+    Hnode: int = 16  # node number for control
     Ndiffuse: int = 50  # number of diffusion steps
-    temp_sample: float = 0.1  # temperature for sampling
+    temp_sample: float = 0.3 # temperature for sampling
 
 
 class MBDPI:
@@ -51,13 +51,13 @@ class MBDPI:
         A = sigma0
         B = jnp.log(sigma1 / sigma0) / args.Ndiffuse
         self.sigmas = A * jnp.exp(B * jnp.arange(args.Ndiffuse))
-        self.sigma_control = jnp.ones(args.Hnode) * 0.3
+        self.sigma_control = jnp.ones(args.Hnode + 1) * 0.6
 
         # node to u
-        self.step_us = jnp.linspace(0, 1, args.Hsample)
-        self.step_nodes = jnp.linspace(0, 1, args.Hnode)
+        self.step_us = jnp.linspace(0, 1, args.Hsample + 1)
+        self.step_nodes = jnp.linspace(0, 1, args.Hnode + 1)
         self.ctrl_dt = 0.02
-        self.node_dt = self.ctrl_dt * (args.Hsample - 1) / (args.Hnode - 1)
+        self.node_dt = self.ctrl_dt * (args.Hsample) / (args.Hnode)
 
         # setup function
         self.rollout_us = jax.jit(functools.partial(rollout_us, self.env.step))
@@ -88,7 +88,7 @@ class MBDPI:
         # sample from q_i
         rng, Y0s_rng = jax.random.split(rng)
         eps_Y = jax.random.normal(
-            Y0s_rng, (self.args.Nsample, self.args.Hnode, self.nu)
+            Y0s_rng, (self.args.Nsample, self.args.Hnode + 1, self.nu)
         )
         Y0s = eps_Y * noise_scale[None, :, None] + Ybar_i
         Y0s = jnp.clip(Y0s, -1.0, 1.0)
@@ -102,7 +102,6 @@ class MBDPI:
 
         weights = jax.nn.softmax(logp0)
         Ybar = jnp.einsum("n,nij->ij", weights, Y0s)  # NOTE: update only with reward
-        # ubar = jnp.einsum("n,nij->ij", weights, us)
 
         return rng, Ybar, rews
 
@@ -112,7 +111,7 @@ class MBDPI:
             for i in pbar:
                 t0 = time.time()
                 rng, Yi, rews = self.reverse_once(
-                    state, rng, Yi, self.sigmas[i] * jnp.ones(self.args.Hnode)
+                    state, rng, Yi, self.sigmas[i] * jnp.ones(self.args.Hnode + 1)
                 )
                 Yi.block_until_ready()
                 freq = 1 / (time.time() - t0)
@@ -136,9 +135,9 @@ class MBDPI:
 
 def main(args: Args):
     rng = jax.random.PRNGKey(seed=args.seed)
-    from gr1_env import GR1Env
+    from cf2_env import CF2Env
 
-    env = GR1Env()
+    env = CF2Env()
     reset_env = jax.jit(env.reset)
     step_env = jax.jit(env.step)
     mbdpi = MBDPI(args, env)
@@ -146,7 +145,7 @@ def main(args: Args):
     rng, rng_reset = jax.random.split(rng)
     state_init = reset_env(rng_reset)
 
-    YN = jnp.zeros([args.Hnode, mbdpi.nu])
+    YN = jnp.zeros([args.Hnode + 1, mbdpi.nu])
 
     rng_exp, rng = jax.random.split(rng)
     # Y0 = mbdpi.reverse(state_init, YN, rng_exp)
@@ -155,8 +154,6 @@ def main(args: Args):
     Nstep = 100
     rews = []
     rollout = []
-    zs_feet = []
-    zs_feet_ref = []
     state = state_init
     with tqdm(range(Nstep), desc="Rollout") as pbar:
         for t in pbar:
@@ -164,8 +161,6 @@ def main(args: Args):
             state = step_env(state, Y0[0])
             rollout.append(state.pipeline_state)
             rews.append(state.reward)
-            zs_feet.append(env._get_feet_height(state.pipeline_state))
-            zs_feet_ref.append(env._get_feet_gait({"step": t}))
 
             # update Y0
             Y0 = mbdpi.shift(Y0)
@@ -177,15 +172,6 @@ def main(args: Args):
 
     rew = jnp.array(rews).mean()
     print(f"mean reward = {rew:.2e}")
-
-    # plot
-    zs_feet = jnp.array(zs_feet)
-    zs_feet_ref = jnp.array(zs_feet_ref)
-    fig, axes = plt.subplots(2, 1, figsize=(6, 6))
-    for i in range(2):
-        axes[i].plot(zs_feet[:, i], label="feet")
-        axes[i].plot(zs_feet_ref[:, i], "--", label="ref")
-    plt.savefig("./results/feet.png")
 
     # host webpage with flask
     import flask
