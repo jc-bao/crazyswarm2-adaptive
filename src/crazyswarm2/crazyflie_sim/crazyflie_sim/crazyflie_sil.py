@@ -443,7 +443,7 @@ class CrazyflieSIL:
 
 
         firm.powerDistribution(self.control, self.motors_thrust_uncapped)
-        print('motor', self.motors_thrust_uncapped.motors.m1, self.motors_thrust_uncapped.motors.m2, self.motors_thrust_uncapped.motors.m3, self.motors_thrust_uncapped.motors.m4)
+        # print('motor', self.motors_thrust_uncapped.motors.m1, self.motors_thrust_uncapped.motors.m2, self.motors_thrust_uncapped.motors.m3, self.motors_thrust_uncapped.motors.m4)
 
         firm.powerDistributionCap(self.motors_thrust_uncapped, self.motors_thrust_pwm)
 

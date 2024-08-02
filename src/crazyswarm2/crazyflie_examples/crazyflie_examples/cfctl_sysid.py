@@ -282,7 +282,7 @@ def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
     acc_stablize = np.zeros_like(pos_stablize)
 
     # generate test trajectory
-    t_task = 2.0
+    t_task = 4.0
     if mode == "0":
         target_pos = np.array([0.0, 0.0, 0.0])
         pos_task = np.ones((int(t_task / dt), 3)) * target_pos
@@ -298,7 +298,7 @@ def generate_traj(init_pos: np.array, dt: float, mode: str="0") -> np.ndarray:
         acc_task = np.zeros_like(pos_task)
     elif mode == "x" or mode == "y" or mode == "xy" or mode == "yx":
         if mode == "x":
-            points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+            points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
         elif mode == "y":
             points = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0,0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
         elif mode == "xy":
@@ -1033,7 +1033,7 @@ def main(enable_logging=True, mode="mppi"):  # mode  = mppi covo-online covo-off
             
             if timestep == int((4.0-0.1)*50):
                 env.cf.setParam("usd.logging", 1)
-            elif timestep == int((10.0+0.1) * 50):
+            elif timestep == int((8.0+0.1) * 50):
                 env.cf.setParam("usd.logging", 0)
             # if timestep == int((4.0-0.1)*50):
             #     env.cf.setParam("usd.logging", 1)

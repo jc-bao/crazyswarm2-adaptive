@@ -24,19 +24,19 @@ robot_types:
     battery:
       voltage_warning: 4.0  # V
       voltage_critical: 3.9 # V
-    firmware_params:
-      ctrlMel:
-        kR_xy: 1 #300
-        kR_z: 0 #150
-      # ctrlRwik:
+    # firmware_params:
+      # ctrlMel:
+      #   kR_xy: 1 #300
+      #   kR_z: 0 #150
+      # ctrlRwik:e
       #   ki_accz: 0.01
       # ctrlRwik:
-        # kp_wxy: 40.0
-        # kd_wxy: 0.0
-        # ki_wxy: 0.0
-        # kp_wz: 20.0
-        # kd_wz: 0.0
-        # ki_wz: 0.0
+      #   kp_wxy: 40.0
+      #   kd_wxy: 0.0
+      #   ki_wxy: 0.0
+      #   kp_wz: 20.0
+      #   kd_wz: 0.0
+      #   ki_wz: 0.0
       # ctrlRwik:
       #   kp_wxy: 1000.0
       #   # kp_xy: 0.4 #0.6 # p for position

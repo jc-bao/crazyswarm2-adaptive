@@ -7,7 +7,7 @@ import seaborn as sns
 
 def main():
     # load data
-    data = cfusdlog.decode('/media/pcy/cfSD/log06')['fixedFrequency']
+    data = cfusdlog.decode('/media/pcy/cfSD/log29')['fixedFrequency']
 
     # load following parameters
     # ctrlRwik.p_error_wx
@@ -23,7 +23,7 @@ def main():
     # ctrlRwik.wy
     # ctrlRwik.wz
     # ctrlRwik.wx_des
-    # ctrlRwik.wy_des
+    # ctrlRwik.wy_des/180.0*np.pi
     # ctrlRwik.wz_des
 
     # p_error_wx = data['ctrlRwik.p_error_wx']
@@ -35,16 +35,19 @@ def main():
     # d_error_wx = data['ctrlRwik.d_error_wx']
     # d_error_wy = data['ctrlRwik.d_error_wy']
     # d_error_wz = data['ctrlRwik.d_error_wz']
-    # wx = data['ctrlRwik.wx']
-    # wy = data['ctrlRwik.wy']
-    # wz = data['ctrlRwik.wz']
-    # wx_des = data['ctrlRwik.wx_des']
-    # wy_des = data['ctrlRwik.wy_des']
-    # wz_des = data['ctrlRwik.wz_des']
+
+    print(data.keys())
+
+    wx = data['ctrlRwik.wx']
+    wy = data['ctrlRwik.wy']
+    wz = data['ctrlRwik.wz']
+    wx_des = data['ctrlRwik.wx_des']
+    wy_des = data['ctrlRwik.wy_des']
+    wz_des = data['ctrlRwik.wz_des']
     # torquex_des = data['ctrlRwik.torquex_des']
-    az = data['ctrlRwik.az']
-    az_des = data['ctrlRwik.az_des']
-    p_error_az = data['ctrlRwik.p_error_accz']
+    # az = data['ctrlRwik.az']
+    # az_des = data['ctrlRwik.az_des']
+    # p_error_az = data['ctrlRwik.p_error_accz']
     # i_error_az = data['ctrlRwik.i_error_accz']
     time = data['timestamp'] - data['timestamp'][0]
 
@@ -58,12 +61,20 @@ def main():
     # plt.plot(time, wx, label='wx')
     # plt.plot(time, wx_des, label='wx_des')
     # plt.plot(time, torquex_des*500, label='torquex_des')
-    plt.plot(time, az, label='az')
-    plt.plot(time, az_des, label='az_des')
-    plt.plot(time, p_error_az, label='p_error_az')
-    # plt.plot(time, i_error_az, label='i_error_az')
-    plt.legend()
+    fig, axes = plt.subplots(3, 1)
+    for i in range(3):
+        w = [wx, wy, wz][i]
+        w_des = [wx_des, wy_des, wz_des][i]
+        axes[i].plot(time, w, label='w')
+        axes[i].plot(time, w_des, label='w_des')
+        axes[i].legend()
     plt.savefig('plot.png')
+    # plt.plot(time, az, label='az')
+    # plt.plot(time, az_des, label='az_des')
+    # plt.plot(time, p_error_az, label='p_error_az')
+    # plt.plot(time, i_error_az, label='i_error_az')
+    # plt.legend()
+    # plt.savefig('plot.png')
 
 if __name__ == '__main__':
     main()
