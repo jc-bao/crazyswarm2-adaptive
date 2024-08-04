@@ -1,5 +1,3 @@
-import rclpy
-from rclpy.node import Node
 import numpy as np
 import time
 from std_msgs.msg import Float32MultiArray
@@ -8,18 +6,15 @@ import jax
 from brax.mjx.pipeline import init as pipeline_init
 from brax.envs.base import State
 from jax_cosmo.scipy.interpolate import InterpolatedUnivariateSpline
+import redis
 
 from mbd_core import Args, MBDPI
 from cf2_env import CF2Env
 
 
-class CF2Plan(Node):
+class CF2Plan:
     def __init__(self):
-        super().__init__("cf2_plan")
-        self.state_sub = self.create_subscription(
-            Float32MultiArray, "state", self.state_callback, 100
-        )
-        self.acts_pub = self.create_publisher(Float32MultiArray, "action", 10)
+        self.client = redis.Redis(host='localhost', port=6379)
         self._init_q = np.zeros(7)
         self._init_q[3] = 1.0
         self.q, self.dq = self._init_q, np.zeros(6)
@@ -56,7 +51,7 @@ class CF2Plan(Node):
         )
         return state
 
-    def state_callback(self, msg):
+    def state_callback(self):
         state = np.array(msg.data)
         self.t = state[0] * 1.0
         self.q = state[1:8]
