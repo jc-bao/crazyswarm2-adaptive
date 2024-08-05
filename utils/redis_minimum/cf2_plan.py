@@ -65,9 +65,18 @@ class CF2Plan:
         x_new = spline(self.mbdpi.step_nodes * self.mbdpi.node_dt + shift_time)
         return x_new
 
-    def get_mjx_state(self, q, qd):
+    def get_mjx_state(self, q, qd, t):
         pipeline_state = self.pipeline_init_jit(self.env.sys, q, qd)
-        state_info = {"step": int(self.t / self.ctrl_dt)}
+        step = int(t / self.ctrl_dt)
+        state_info = {
+            "step": step,
+            "pos_tar": jnp.array([0.0, 0.0, 1.0]),
+            "quat_tar": jnp.where(
+                step % 600 < 300,
+                jnp.array([0.0, 0.0, 0.0, 1.0]),
+                jnp.array([1.0, 0.0, 0.0, 0.0]),
+            ),
+        }
         metrics = {}
         state = State(
             pipeline_state=pipeline_state,
@@ -86,14 +95,18 @@ class CF2Plan:
             t0 = time.time()
             # get state
             plan_time = self.time_shared[0]
-            state = self.get_mjx_state(self.state_shared[:7].copy(), self.state_shared[7:].copy())
+            state = self.get_mjx_state(
+                self.state_shared[:7].copy(), self.state_shared[7:].copy(), plan_time.copy()
+            )
             # self.rollout.append(state.pipeline_state)
             # shift Y
             shift_time = plan_time - last_plan_time
             if shift_time > self.ctrl_dt + 1e-3:
                 print(f"[WRAN] sim overtime {(shift_time-self.ctrl_dt)*1000:.1f} ms")
             if shift_time > self.ctrl_dt * 50:
-                print(f"[WARN] long time unplanned {shift_time*1000:.1f} ms, reset control")
+                print(
+                    f"[WARN] long time unplanned {shift_time*1000:.1f} ms, reset control"
+                )
                 self.Y = jnp.zeros_like(self.Y)
             else:
                 self.Y = self.shift_vmap(self.Y, shift_time)

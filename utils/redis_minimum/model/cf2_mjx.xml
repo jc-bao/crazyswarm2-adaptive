@@ -2,7 +2,7 @@
 
     <compiler angle="radian" meshdir="assets" autolimits="true" />
 
-    <option iterations="1" ls_iterations="1" integrator="Euler" solver="Newton">
+    <option iterations="1" ls_iterations="1" integrator="Euler" solver="Newton" gravity="0.0 0.0 -9.81">
         <flag eulerdamp="disable" />
     </option>
 
@@ -132,6 +132,6 @@
     </sensor>
 
     <keyframe>
-        <key name="hover" qpos="0 0 0.5 1 0 0 0" ctrl="0.26487 0 0 0" />
+        <key name="hover" qpos="0 0 1.0 1 0 0 0" ctrl="0.26487 0 0 0" />
     </keyframe>
 </mujoco>

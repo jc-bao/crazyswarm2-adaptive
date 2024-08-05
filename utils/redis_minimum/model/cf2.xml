@@ -131,6 +131,6 @@
     </sensor>
 
     <keyframe>
-        <key name="hover" qpos="0 0 0.5 1 0 0 0" ctrl="0.26487 0 0 0" />
+        <key name="hover" qpos="0 0 1.0 1 0 0 0" ctrl="0.26487 0 0 0" />
     </keyframe>
 </mujoco>

@@ -9,6 +9,9 @@ from dataclasses import dataclass
 import tyro
 import matplotlib.pyplot as plt
 from brax.io import html
+import scienceplots
+
+plt.style.use("science")
 
 # Tell XLA to use Triton GEMM, this improves steps/sec by ~30% on some GPUs
 xla_flags = os.environ.get("XLA_FLAGS", "")
@@ -36,8 +39,10 @@ class Args:
     Nsample: int = 2048  # number of samples
     Hsample: int = 16  # horizon of samples
     Hnode: int = 8  # node number for control
+    # Hsample: int = 50  # horizon of samples
+    # Hnode: int = 25  # node number for control
     Ndiffuse: int = 50  # number of diffusion steps
-    temp_sample: float = 0.3 # temperature for sampling
+    temp_sample: float = 0.1 # temperature for sampling
 
 
 class MBDPI:
@@ -51,7 +56,7 @@ class MBDPI:
         A = sigma0
         B = jnp.log(sigma1 / sigma0) / args.Ndiffuse
         self.sigmas = A * jnp.exp(B * jnp.arange(args.Ndiffuse))
-        self.sigma_control = jnp.ones(args.Hnode + 1) * 0.6
+        self.sigma_control = jnp.ones(args.Hnode + 1) * 0.7
 
         # node to u
         self.step_us = jnp.linspace(0, 1, args.Hsample + 1)
@@ -153,6 +158,7 @@ def main(args: Args):
 
     Nstep = 100
     rews = []
+    rews_plan = []
     rollout = []
     state = state_init
     with tqdm(range(Nstep), desc="Rollout") as pbar:
@@ -166,12 +172,17 @@ def main(args: Args):
             Y0 = mbdpi.shift(Y0)
 
             t0 = time.time()
-            rng, Y0, _ = mbdpi.reverse_once(state, rng, Y0, mbdpi.sigma_control)
+            rng, Y0, rew_plan = mbdpi.reverse_once(state, rng, Y0, mbdpi.sigma_control)
+            rews_plan.append(rew_plan.mean())
             freq = 1 / (time.time() - t0)
             pbar.set_postfix({"rew": f"{state.reward:.2e}", "freq": f"{freq:.2f}"})
 
     rew = jnp.array(rews).mean()
     print(f"mean reward = {rew:.2e}")
+
+    # plot rews_plan
+    plt.plot(rews_plan)
+    plt.savefig("rews_plan.png")
 
     # host webpage with flask
     import flask
