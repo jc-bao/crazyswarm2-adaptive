@@ -24,6 +24,17 @@ class CF2Sim:
         mujoco.mj_resetDataKeyframe(self.mj_model, self.mj_data, 0)
         mujoco.mj_forward(self.mj_model, self.mj_data)
         self.ctrl_hover = np.ones(4) * 0.06622
+        arm_length = 0.046  # m
+        arm = 0.707106781 * arm_length
+        t2t = 0.006  # thrust-to-torque ratio
+        self.B0 = np.array(
+            [
+                [1, 1, 1, 1],
+                [-arm, -arm, arm, arm],
+                [-arm, arm, arm, -arm],
+                [-t2t, t2t, -t2t, t2t],
+            ]
+        )
         # communication setup
         # publisher
         self.time_shm = shared_memory.SharedMemory(
@@ -54,6 +65,8 @@ class CF2Sim:
             1, dtype=np.float32, buffer=self.plan_time_shm.buf
         )
 
+    def thrust2torque(self, thrust):
+        return np.dot(self.B0, thrust)
 
     def main_loop(self):
         with mujoco.viewer.launch_passive(
@@ -68,7 +81,7 @@ class CF2Sim:
                 if delta_step >= self.n_acts or delta_step < 0:
                     delta_step = self.n_acts - 1
 
-                self.mj_data.ctrl = self.acts_shared[delta_step]
+                self.mj_data.ctrl = self.thrust2torque(self.acts_shared[delta_step])
                 mujoco.mj_step(self.mj_model, self.mj_data)
                 self.t += self.sim_dt
                 q = self.mj_data.qpos

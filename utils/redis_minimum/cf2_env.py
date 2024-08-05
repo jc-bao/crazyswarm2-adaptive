@@ -33,15 +33,30 @@ class CF2Env(PipelineEnv):
 
         self._init_q = jp.array(sys.mj_model.keyframe("hover").qpos)
         self._init_u = jp.array(sys.mj_model.keyframe("hover").ctrl)
-        self.action_min = 0.0
-        self.action_max = 0.1
+        arm_length = 0.046  # m
+        arm = 0.707106781 * arm_length
+        t2t = 0.006  # thrust-to-torque ratio
+        self.B0 = jp.array(
+            [
+                [1, 1, 1, 1],
+                [-arm, -arm, arm, arm],
+                [-arm, arm, arm, -arm],
+                [-t2t, t2t, -t2t, t2t],
+            ]
+        )
+        self.thrust_min = 0.0
+        self.thrust_max = 0.1
         self.nq = sys.q_size()
         self.nv = sys.qd_size()
 
     def reset(self, rng: jax.Array) -> State:  # pytype: disable=signature-mismatch
         rng, key = jax.random.split(rng)
-        delta_pos = jax.random.uniform(key, (3,), minval=jp.array([-0.5, -0.5, 0.0]), maxval=jp.array([0.5, 0.5, 0.5])) * 0.0
-        delta_pos = delta_pos.at[2].set(delta_pos[2] - 0.2)
+        delta_pos = jax.random.uniform(
+            key,
+            (3,),
+            minval=jp.array([-0.5, -0.5, 0.0]),
+            maxval=jp.array([0.5, 0.5, 0.5]),
+        )
         init_q = self._init_q.at[:3].set(self._init_q[:3] + delta_pos)
         pipeline_state = self.pipeline_init(init_q, jp.zeros(self.nv))
         state_info = {"step": 0}
@@ -53,18 +68,25 @@ class CF2Env(PipelineEnv):
             pipeline_state, obs, reward, done, metrics, state_info
         )  # pytype: disable=wrong-arg-types
         return state
-    
+
     def thrust2act(self, thrusts: jax.Array) -> jax.Array:
-        return (thrusts - self.action_min) / (self.action_max - self.action_min) * 2.0 - 1.0
-    
+        return (thrusts - self.thrust_min) / (
+            self.thrust_max - self.thrust_min
+        ) * 2.0 - 1.0
+
     def act2thrust(self, acts: jax.Array) -> jax.Array:
-        return (acts + 1) * (self.action_max - self.action_min) * 0.5 + self.action_min
+        return (acts + 1) * (self.thrust_max - self.thrust_min) * 0.5 + self.thrust_min
+
+    def thrust2torque(self, thrusts: jax.Array) -> jax.Array:
+        eta = jp.dot(self.B0, thrusts)
+        return eta
 
     def step(
         self, state: State, action: jax.Array
     ) -> State:  # pytype: disable=signature-mismatch
         thrusts = self.act2thrust(action)
-        pipeline_state = self.pipeline_step(state.pipeline_state, thrusts)
+        eta = self.thrust2torque(thrusts)
+        pipeline_state = self.pipeline_step(state.pipeline_state, eta)
         # observation data
         obs = self._get_obs(pipeline_state, state.info)
         # reward data
@@ -104,7 +126,9 @@ class CF2Env(PipelineEnv):
         reward_vel = 1.0 - jp.linalg.norm(vel)
         reward_omega = 1.0 - jp.linalg.norm(omega)
 
-        reward = 3.0 * reward_pos + 0.3 * reward_rot + 0.1 * reward_vel + 0.01 * reward_omega
+        reward = (
+            1.0 * reward_pos + 0.1 * reward_rot + 0.03 * reward_vel + 0.01 * reward_omega
+        )
 
         return reward
 
