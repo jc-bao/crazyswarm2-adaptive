@@ -34,8 +34,8 @@ class Args:
     env_name: str = "cf2"
     # diffusion
     Nsample: int = 2048  # number of samples
-    Hsample: int = 32  # horizon of samples
-    Hnode: int = 16  # node number for control
+    Hsample: int = 16  # horizon of samples
+    Hnode: int = 8  # node number for control
     Ndiffuse: int = 50  # number of diffusion steps
     temp_sample: float = 0.3 # temperature for sampling
 

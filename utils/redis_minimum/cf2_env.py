@@ -40,7 +40,8 @@ class CF2Env(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:  # pytype: disable=signature-mismatch
         rng, key = jax.random.split(rng)
-        delta_pos = jax.random.uniform(key, (3,), minval=jp.array([-0.5, -0.5, 0.0]), maxval=jp.array([0.5, 0.5, 0.5])) 
+        delta_pos = jax.random.uniform(key, (3,), minval=jp.array([-0.5, -0.5, 0.0]), maxval=jp.array([0.5, 0.5, 0.5])) * 0.0
+        delta_pos = delta_pos.at[2].set(delta_pos[2] - 0.2)
         init_q = self._init_q.at[:3].set(self._init_q[:3] + delta_pos)
         pipeline_state = self.pipeline_init(init_q, jp.zeros(self.nv))
         state_info = {"step": 0}
@@ -103,7 +104,7 @@ class CF2Env(PipelineEnv):
         reward_vel = 1.0 - jp.linalg.norm(vel)
         reward_omega = 1.0 - jp.linalg.norm(omega)
 
-        reward = 3.0 * reward_pos + 0.3 * reward_rot + 0.1 * reward_vel + 0.03* reward_omega
+        reward = 3.0 * reward_pos + 0.3 * reward_rot + 0.1 * reward_vel + 0.01 * reward_omega
 
         return reward
 
