@@ -2,7 +2,7 @@
 
     <compiler angle="radian" meshdir="assets" autolimits="true" />
 
-    <option iterations="1" ls_iterations="1" integrator="Euler" solver="Newton" gravity="0.0 0.0 -9.81">
+    <option iterations="1" ls_iterations="1" integrator="Euler" solver="Newton">
         <flag eulerdamp="disable" />
     </option>
 

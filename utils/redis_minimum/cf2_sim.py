@@ -11,7 +11,7 @@ class CF2Sim:
         # control related
         self.ctrl_dt = 0.02
         self.real_time_factor = 1.0
-        self.sim_dt = 0.005
+        self.sim_dt = 0.01
         self.n_acts = 50
         self.n_frame = int(self.ctrl_dt / self.sim_dt)
         self.t = 0.0
@@ -70,7 +70,7 @@ class CF2Sim:
 
     def main_loop(self):
         with mujoco.viewer.launch_passive(
-            self.mj_model, self.mj_data, show_left_ui=False, show_right_ui=False
+            self.mj_model, self.mj_data, show_left_ui=False, show_right_ui=True
         ) as viewer:
             while True:
                 t0 = time.time()
@@ -97,7 +97,7 @@ class CF2Sim:
                 if t1 - t0 < self.sim_dt:
                     time.sleep((self.sim_dt - (t1 - t0)) / self.real_time_factor)
                 else:
-                    print("[WARN] Control loop overruns")
+                    print("[WARN] Sim loop overruns")
 
     def close(self):
         self.time_shm.close()

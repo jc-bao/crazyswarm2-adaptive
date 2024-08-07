@@ -35,7 +35,7 @@ class CF2Env(PipelineEnv):
         self._init_u = jp.array(sys.mj_model.keyframe("hover").ctrl)
         arm_length = 0.046  # m
         arm = 0.707106781 * arm_length
-        t2t = 0.006 * 0.3  # thrust-to-torque ratio
+        t2t = 0.006  # thrust-to-torque ratio
         self.B0 = jp.array(
             [
                 [1, 1, 1, 1],
@@ -45,7 +45,7 @@ class CF2Env(PipelineEnv):
             ]
         )
         self.thrust_min = 0.0
-        self.thrust_max = 0.2
+        self.thrust_max = 0.1
         self.nq = sys.q_size()
         self.nv = sys.qd_size()
 
@@ -63,7 +63,7 @@ class CF2Env(PipelineEnv):
         pipeline_state = self.pipeline_init(self._init_q, jp.zeros(self.nv))
         state_info = {
             "step": 0,
-            "pos_tar": jp.array([0.0, 0.0, 0.3]) + delta_pos,
+            "pos_tar": jp.array([0.0, 0.0, 1.0]) + delta_pos,
             "quat_tar": jp.array([0.0, 0.0, 0.0, 1.0]),  # w, x, y, z
         }
         obs = self._get_obs(pipeline_state, state_info)
@@ -103,7 +103,7 @@ class CF2Env(PipelineEnv):
             "pos_tar": state.info["pos_tar"],
             "quat_tar": jp.where(
                 state.info["step"] % 600 < 300,
-                jp.array([0.0, 0.0, 0.0, 1.0]),
+                jp.array([1.0, 0.0, 0.0, 0.0]),
                 jp.array([1.0, 0.0, 0.0, 0.0]),
             ),
         }
@@ -142,9 +142,9 @@ class CF2Env(PipelineEnv):
 
         reward = (
             1.0 * reward_pos
-            + 1.0 * reward_rot
-            + 0.0 * reward_vel
-            + 0.0 * reward_omega
+            + 0.3 * reward_rot
+            + 0.1 * reward_vel
+            + 0.03 * reward_omega
         )
 
         return reward

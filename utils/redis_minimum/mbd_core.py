@@ -38,11 +38,11 @@ class Args:
     # diffusion
     Nsample: int = 2048  # number of samples
     Hsample: int = 16  # horizon of samples
-    Hnode: int = 8  # node number for control
+    Hnode: int = 8 # node number for control
     # Hsample: int = 50  # horizon of samples
     # Hnode: int = 25  # node number for control
     Ndiffuse: int = 50  # number of diffusion steps
-    temp_sample: float = 0.1 # temperature for sampling
+    temp_sample: float = 0.3 # temperature for sampling
 
 
 class MBDPI:

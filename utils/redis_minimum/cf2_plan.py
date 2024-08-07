@@ -73,7 +73,7 @@ class CF2Plan:
             "pos_tar": jnp.array([0.0, 0.0, 1.0]),
             "quat_tar": jnp.where(
                 step % 600 < 300,
-                jnp.array([0.0, 0.0, 0.0, 1.0]),
+                jnp.array([1.0, 0.0, 0.0, 0.0]),
                 jnp.array([1.0, 0.0, 0.0, 0.0]),
             ),
         }
@@ -107,7 +107,7 @@ class CF2Plan:
                 print(
                     f"[WARN] long time unplanned {shift_time*1000:.1f} ms, reset control"
                 )
-                self.Y = jnp.zeros_like(self.Y)
+                self.Y = self.Y * 0.0 + 0.5
             else:
                 self.Y = self.shift_vmap(self.Y, shift_time)
             # run planner
