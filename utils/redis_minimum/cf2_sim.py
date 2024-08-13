@@ -41,7 +41,7 @@ class CF2Sim:
             name="time_shm", create=True, size=32
         )
         self.time_shared = np.ndarray(1, dtype=np.float32, buffer=self.time_shm.buf)
-        self.time_shared[0] = 0.0 
+        self.time_shared[0] = 0.0
         self.state_shm = shared_memory.SharedMemory(
             name="state_shm", create=True, size=13 * 32
         )
@@ -76,8 +76,8 @@ class CF2Sim:
                 t0 = time.time()
                 delta_time = self.t - self.plan_time_shared[0]
                 delta_step = int(delta_time / self.ctrl_dt)
-                # if delta_time > 0.02:
-                #     print(f"[WARN] Delayed by {delta_time*1000.0:.1f} ms")
+                if delta_time > 0.02:
+                    print(f"[WARN] Delayed by {delta_time*1000.0:.1f} ms")
                 if delta_step >= self.n_acts or delta_step < 0:
                     delta_step = self.n_acts - 1
 
@@ -95,7 +95,7 @@ class CF2Sim:
                 viewer.sync()
                 t1 = time.time()
                 if t1 - t0 < self.sim_dt:
-                    time.sleep((self.sim_dt - (t1 - t0)) / self.real_time_factor)
+                    time.sleep((self.sim_dt / self.real_time_factor - (t1 - t0)))
                 else:
                     print("[WARN] Sim loop overruns")
 

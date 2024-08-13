@@ -1,12 +1,12 @@
 import os
 from typing import Any
 import jax
-from jax import numpy as jp
+from jax import numpy as jnp
 import numpy as np
 from matplotlib import pyplot as plt
 
 from brax.io import mjcf, html
-from brax import base
+from brax import base, math
 from brax.envs.base import PipelineEnv, State
 
 # Tell XLA to use Triton GEMM, this improves steps/sec by ~30% on some GPUs
@@ -31,12 +31,12 @@ class CF2Env(PipelineEnv):
         n_frames = kwargs.pop("n_frames", int(self._dt / sys.opt.timestep))
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
-        self._init_q = jp.array(sys.mj_model.keyframe("hover").qpos)
-        self._init_u = jp.array(sys.mj_model.keyframe("hover").ctrl)
+        self._init_q = jnp.array(sys.mj_model.keyframe("hover").qpos)
+        self._init_u = jnp.array(sys.mj_model.keyframe("hover").ctrl)
         arm_length = 0.046  # m
         arm = 0.707106781 * arm_length
         t2t = 0.006  # thrust-to-torque ratio
-        self.B0 = jp.array(
+        self.B0 = jnp.array(
             [
                 [1, 1, 1, 1],
                 [-arm, -arm, arm, arm],
@@ -55,16 +55,16 @@ class CF2Env(PipelineEnv):
             jax.random.uniform(
                 key,
                 (3,),
-                minval=jp.array([-0.5, -0.5, -0.1]),
-                maxval=jp.array([0.5, 0.5, 0.5]),
+                minval=jnp.array([-0.5, -0.5, -0.1]),
+                maxval=jnp.array([0.5, 0.5, 0.5]),
             )
             * 0.0
         )
-        pipeline_state = self.pipeline_init(self._init_q, jp.zeros(self.nv))
+        pipeline_state = self.pipeline_init(self._init_q, jnp.zeros(self.nv))
         state_info = {
             "step": 0,
-            "pos_tar": jp.array([0.0, 0.0, 1.0]) + delta_pos,
-            "quat_tar": jp.array([0.0, 0.0, 0.0, 1.0]),  # w, x, y, z
+            "pos_tar": jnp.array([0.0, 0.0, 0.5]) + delta_pos,
+            "quat_tar": jnp.array([0.0, 0.0, 0.0, 1.0]),  # w, x, y, z
         }
         obs = self._get_obs(pipeline_state, state_info)
         done = 0.0
@@ -84,7 +84,7 @@ class CF2Env(PipelineEnv):
         return (acts + 1) * (self.thrust_max - self.thrust_min) * 0.5 + self.thrust_min
 
     def thrust2torque(self, thrusts: jax.Array) -> jax.Array:
-        eta = jp.dot(self.B0, thrusts)
+        eta = jnp.dot(self.B0, thrusts)
         return eta
 
     def step(
@@ -101,10 +101,10 @@ class CF2Env(PipelineEnv):
         state_info = {
             "step": state.info["step"] + 1,
             "pos_tar": state.info["pos_tar"],
-            "quat_tar": jp.where(
+            "quat_tar": jnp.where(
                 state.info["step"] % 600 < 300,
-                jp.array([1.0, 0.0, 0.0, 0.0]),
-                jp.array([1.0, 0.0, 0.0, 0.0]),
+                jnp.array([1.0, 0.0, 0.0, 0.0]),
+                jnp.array([1.0, 0.0, 0.0, 0.0]),
             ),
         }
 
@@ -122,7 +122,7 @@ class CF2Env(PipelineEnv):
         pipeline_state: base.State,
         state_info: dict[str, Any],
     ) -> jax.Array:
-        obs = jp.zeros(0)
+        obs = jnp.zeros(0)
         return obs
 
     def _get_reward(
@@ -135,16 +135,28 @@ class CF2Env(PipelineEnv):
         vel = pipeline_state.qd[:3]
         omega = pipeline_state.qd[3:6]
 
-        reward_pos = 0.0 - jp.linalg.norm(pos - state_info["pos_tar"])
-        reward_rot = 0.0 - jp.linalg.norm(quat - state_info["quat_tar"])
-        reward_vel = 0.0 - jp.linalg.norm(vel)
-        reward_omega = 0.0 - jp.linalg.norm(omega)
+        x = pipeline_state.x
+        # position reward
+        reward_pos = 0.0 - jnp.linalg.norm(pos - state_info["pos_tar"])
+        # upright reward
+        vec_tar = jnp.array([0.0, 0.0, 1.0])
+        vec = math.rotate(vec_tar, x.rot[0])
+        reward_upright = -jnp.linalg.norm(vec - vec_tar)
+        # yaw orientation reward
+        yaw_tar = 0.0
+        yaw = math.quat_to_euler(x.rot[0])[2]
+        reward_yaw = -jnp.abs(yaw - yaw_tar) / jnp.pi
+        # velocity reward
+        reward_vel = 0.0 - jnp.linalg.norm(vel / 5.0)
+        # angular velocity reward
+        reward_omega = 0.0 - jnp.linalg.norm(omega / 10.0)
 
         reward = (
             1.0 * reward_pos
-            + 0.3 * reward_rot
+            + 0.3 * reward_upright
+            + 0.3 * reward_yaw
             + 0.1 * reward_vel
-            + 0.03 * reward_omega
+            + 0.1 * reward_omega
         )
 
         return reward
@@ -161,7 +173,7 @@ if __name__ == "__main__":
         rng, _ = jax.random.split(rng)
         # simple feedback controller
         thrusts = (env._init_q[2] - state.pipeline_state.q[2]) * 0.01 + 0.06622
-        act = env.thrust2act(jp.array([thrusts] * 4))
+        act = env.thrust2act(jnp.array([thrusts] * 4))
         state = step_jit(state, act)
         rollout.append(state.pipeline_state)
 

@@ -38,11 +38,11 @@ class Args:
     # diffusion
     Nsample: int = 2048  # number of samples
     Hsample: int = 16  # horizon of samples
-    Hnode: int = 8 # node number for control
+    Hnode: int = 8  # node number for control
     # Hsample: int = 50  # horizon of samples
     # Hnode: int = 25  # node number for control
     Ndiffuse: int = 50  # number of diffusion steps
-    temp_sample: float = 0.3 # temperature for sampling
+    temp_sample: float = 0.1  # temperature for sampling
 
 
 class MBDPI:
@@ -56,7 +56,7 @@ class MBDPI:
         A = sigma0
         B = jnp.log(sigma1 / sigma0) / args.Ndiffuse
         self.sigmas = A * jnp.exp(B * jnp.arange(args.Ndiffuse))
-        self.sigma_control = jnp.ones(args.Hnode + 1) * 0.7
+        self.sigma_control = jnp.ones(args.Hnode + 1) * 0.5
 
         # node to u
         self.ctrl_dt = 0.02
@@ -182,7 +182,7 @@ def main(args: Args):
 
     # plot rews_plan
     plt.plot(rews_plan)
-    plt.savefig("rews_plan.png")
+    plt.savefig("./results/rews_plan.png")
 
     # host webpage with flask
     import flask

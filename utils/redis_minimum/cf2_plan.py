@@ -18,6 +18,12 @@ class CF2Plan:
         self.q, self.dq = self._init_q, np.zeros(6)
         self.t = 0.0
         self.ctrl_dt = 0.02
+        # adaptive sigma scale
+        self.rew_min = -0.7
+        self.rew_max = -0.4
+        self.sigma_min = 0.3
+        self.sigma_max = 1.0
+        self.sigma = 1.0
         # set up planner
         self.env = CF2Env()
         self.ctrl_hover = np.ones(4) * 0.06622
@@ -57,6 +63,16 @@ class CF2Plan:
         )
         self.state_shared[:] = 0.0
         self.state_shared[3] = 1.0
+
+    def rew2sigma(self, rew):
+        return jnp.clip(
+            (rew - self.rew_min)
+            / (self.rew_max - self.rew_min)
+            * (self.sigma_min - self.sigma_max)
+            + self.sigma_max,
+            self.sigma_min,
+            self.sigma_max,
+        )
 
     def shift(self, x, shift_time):
         spline = InterpolatedUnivariateSpline(self.mbdpi.step_nodes, x, k=2)
@@ -99,6 +115,7 @@ class CF2Plan:
                 plan_time.copy(),
             )
             # self.rollout.append(state.pipeline_state)
+            # self.rollout = self.rollout[-500:]
             # shift Y
             shift_time = plan_time - last_plan_time
             if shift_time > self.ctrl_dt + 1e-3:
@@ -107,13 +124,16 @@ class CF2Plan:
                 print(
                     f"[WARN] long time unplanned {shift_time*1000:.1f} ms, reset control"
                 )
-                self.Y = self.Y * 0.0 + 0.5
+                self.Y = self.Y * 0.0
             else:
                 self.Y = self.shift_vmap(self.Y, shift_time)
             # run planner
+            self.rng, _rng = jax.random.split(self.rng)
             self.rng, self.Y, rews = self.reverse_once_jit(
-                state, self.rng, self.Y, self.mbdpi.sigma_control
+                state, _rng, self.Y, self.mbdpi.sigma_control * self.sigma
             )
+            # self.sigma = self.rew2sigma(rews.mean())
+            # print(f"sigma: {self.sigma:.2f}")
             # convert plan to control
             us = self.mbdpi.node2u_vmap(self.Y)
             # unnormalize control
