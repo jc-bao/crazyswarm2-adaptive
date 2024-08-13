@@ -59,10 +59,8 @@ class CF2Plan:
         self.state_shared[3] = 1.0
 
     def shift(self, x, shift_time):
-        spline = InterpolatedUnivariateSpline(
-            self.mbdpi.step_nodes * self.mbdpi.node_dt, x, k=2
-        )
-        x_new = spline(self.mbdpi.step_nodes * self.mbdpi.node_dt + shift_time)
+        spline = InterpolatedUnivariateSpline(self.mbdpi.step_nodes, x, k=2)
+        x_new = spline(self.mbdpi.step_nodes + shift_time)
         return x_new
 
     def get_mjx_state(self, q, qd, t):
@@ -96,7 +94,9 @@ class CF2Plan:
             # get state
             plan_time = self.time_shared[0]
             state = self.get_mjx_state(
-                self.state_shared[:7].copy(), self.state_shared[7:].copy(), plan_time.copy()
+                self.state_shared[:7].copy(),
+                self.state_shared[7:].copy(),
+                plan_time.copy(),
             )
             # self.rollout.append(state.pipeline_state)
             # shift Y

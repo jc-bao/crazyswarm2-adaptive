@@ -59,9 +59,9 @@ class MBDPI:
         self.sigma_control = jnp.ones(args.Hnode + 1) * 0.7
 
         # node to u
-        self.step_us = jnp.linspace(0, 1, args.Hsample + 1)
-        self.step_nodes = jnp.linspace(0, 1, args.Hnode + 1)
         self.ctrl_dt = 0.02
+        self.step_us = jnp.linspace(0, self.ctrl_dt * args.Hsample, args.Hsample + 1)
+        self.step_nodes = jnp.linspace(0, self.ctrl_dt * args.Hsample, args.Hnode + 1)
         self.node_dt = self.ctrl_dt * (args.Hsample) / (args.Hnode)
 
         # setup function
