@@ -22,7 +22,8 @@ class CF2PID:
         self.kd = 4.0
         self.ki = 0.1
         self.kp_att = 30.0 
-        self.kd_att = 10.0 
+        # self.kd_att = 10.0 
+        self.kd_att = 0.0 
         self.ki_att = 0.0
         # self.m = 0.027
         self.m = 0.032
@@ -82,7 +83,7 @@ class CF2PID:
         v = x[7:10]
         w = x[10:13]
 
-        r_des = np.array([0.0, 0.0, 0.5])
+        r_des = np.array([0.0, 0.0, 0.1])
 
         # control
         # desired force

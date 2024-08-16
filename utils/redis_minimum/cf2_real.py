@@ -164,10 +164,7 @@ class CF2Real:
 
                             # send control
                             for i in range(1, 5):
-                                pwm = (
-                                    self.thrust2pwm(self.acts_shared[delta_step, i - 1])
-                                    * 0.1
-                                )
+                                pwm = (self.thrust2pwm(self.acts_shared[delta_step, i - 1]))
                                 scf.cf.param.set_value(f"motorPowerSet.m{i}", pwm)
 
                             # get state
