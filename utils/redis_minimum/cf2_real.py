@@ -5,6 +5,7 @@ import mujoco.viewer
 import numpy as np
 from multiprocessing import shared_memory
 import math
+from scipy.spatial.transform import Rotation
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
@@ -106,6 +107,8 @@ class CF2Real:
         rpm = force_to_rpm(thrust)
         pwm = rpm_to_pwm(rpm)
 
+        pwm = np.clip(pwm, 0, 60000)
+
         return pwm
 
     def data2state(self, data):
@@ -134,6 +137,12 @@ class CF2Real:
         z = data["stateEstimateZ.z"] / 1000.0
         quat_comp = data["stateEstimateZ.quat"]
         quat = quatdecompress(quat_comp)
+        # rotate around z by 90 deg
+        # Rquat = Rotation.from_quat([quat[1], quat[2], quat[3], quat[0]])
+        # Rz = Rotation.from_euler("z", -math.pi / 2)
+        # R = Rquat
+        # quat = R.as_quat(scalar_first=True)
+
         vx = data["stateEstimateZ.vx"] / 1000.0
         vy = data["stateEstimateZ.vy"] / 1000.0
         vz = data["stateEstimateZ.vz"] / 1000.0
@@ -150,10 +159,10 @@ class CF2Real:
             with SyncCrazyflie(self.uri, cf=self.cf) as scf:
                 scf.cf.param.set_value("motorPowerSet.enable", "1")
                 with SyncLogger(scf, self.lg_stab) as logger:
-                    try:
-                        for log_entry in logger:
+                    for log_entry in logger:
+                        try:
                             print(
-                                f"[INFO] Frequency: {1.0 / (time.time() - self.t):.1f} Hz"
+                                f"[INFO] Frequency: {1.0 / (log_entry[0] / 1000.0 - self.t):.1f} Hz"
                             )
                             delta_time = self.t - self.plan_time_shared[0]
                             delta_step = int(delta_time / self.ctrl_dt)
@@ -168,9 +177,10 @@ class CF2Real:
                                 scf.cf.param.set_value(f"motorPowerSet.m{i}", pwm)
 
                             # get state
+                            self.t = log_entry[0] / 1000.0
                             data = log_entry[1]
                             state = self.data2state(data)
-                            self.t = time.time()
+                            # self.t = time.time()
 
                             # set state to mujoco
                             self.mj_data.qpos[:] = state[:7]
@@ -178,16 +188,16 @@ class CF2Real:
                             mujoco.mj_forward(self.mj_model, self.mj_data)
 
                             # publish new state
-                            self.time_shared[:] = self.t
+                            self.time_shared[:] = self.t * 1.0
                             self.state_shared[:] = state
 
                             viewer.sync()
-                    except KeyboardInterrupt:
-                        scf.cf.param.set_value("motorPowerSet.enable", "0")
-                        pwm = 0.0
-                        for i in range(1, 5):
-                            scf.cf.param.set_value(f"motorPowerSet.m{i}", pwm)
-                        time.sleep(0.1)
+                        except KeyboardInterrupt:
+                            scf.cf.param.set_value("motorPowerSet.enable", "0")
+                            pwm = 0.0
+                            for i in range(1, 5):
+                                scf.cf.param.set_value(f"motorPowerSet.m{i}", pwm)
+                            time.sleep(0.1)
 
     def close(self):
         self.time_shm.close()

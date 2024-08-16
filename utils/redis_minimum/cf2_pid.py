@@ -18,15 +18,15 @@ class CF2PID:
     def __init__(self):
         # control params
         self.ctrl_hover = np.ones(4) * 0.06622
-        self.kp = 4.0
+        self.kp = 8.0
         self.kd = 4.0
-        self.ki = 0.1
-        self.kp_att = 30.0 
+        # self.ki = 0.1
+        self.ki = 0.0
+        self.kp_att = 50.0 
         # self.kd_att = 10.0 
-        self.kd_att = 0.0 
+        self.kd_att = 20.0 
         self.ki_att = 0.0
-        # self.m = 0.027
-        self.m = 0.032
+        self.m = 0.027
         self.I = np.array([2.3951e-5, 2.3951e-5, 3.2347e-5])
         self.g = 9.81
         self.integral = np.zeros(3)
@@ -122,7 +122,7 @@ class CF2PID:
 
         # clip thrust
         over_thrust = np.maximum(thrusts.max() - self.max_thrust, 0.0)
-        thrusts -= over_thrust
+        thrusts = np.clip(thrusts - over_thrust, 0.0, self.max_thrust)
 
         return thrusts
 
@@ -150,7 +150,6 @@ class CF2PID:
             last_plan_time = plan_time
             if time.time() - t0 > self.ctrl_dt:
                 print(f"[WRAN] real overtime {(time.time()-t0)*1000:.1f} ms")
-
 
 def main():
     cf2_plan = CF2PID()
