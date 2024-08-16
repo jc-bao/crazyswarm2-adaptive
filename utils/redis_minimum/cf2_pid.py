@@ -14,7 +14,7 @@ from cf2_env import CF2Env
 
 
 
-class CF2Plan:
+class CF2PID:
     def __init__(self):
         # control params
         self.ctrl_hover = np.ones(4) * 0.06622
@@ -152,7 +152,7 @@ class CF2Plan:
 
 
 def main():
-    cf2_plan = CF2Plan()
+    cf2_plan = CF2PID()
 
     try:
         cf2_plan.main_loop()
